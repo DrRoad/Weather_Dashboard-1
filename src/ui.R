@@ -2,7 +2,8 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(shiny,
                leaflet,
-               shinydashboard)
+               shinydashboard,
+               DT)
 
 
 
@@ -30,7 +31,8 @@ ui <- dashboardPage(title="Weather Dashboard",
                             id = "conditionedPanels",
                             tabPanel('One',
                                      value=1,
-                                     helpText("Test")
+                                     helpText("Test"),
+                                     DT::dataTableOutput('dt1')
                             ),
                             tabPanel('Two',
                                      value=2,

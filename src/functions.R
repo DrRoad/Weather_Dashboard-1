@@ -1,5 +1,16 @@
 import_data <- function() {
     df <- read.csv(data_path)
-    df[df == "NaN"] <- NA
+    df[df == "NULL"] <- NA
     return(df)
+}
+
+
+raster_maker <- function(data, variable){
+    frame.xy_f = cbind.data.frame(data$lon, data$lat)
+    coordinates(frame.xy_f) <- ~data$lon + data$lat
+
+    frame_f <- cbind.data.frame(frame.xy_f, variable)
+    residual_grid <- rasterFromXYZ(frame_f)
+    proj4string(residual_grid) <- CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
+    return(residual_grid)
 }

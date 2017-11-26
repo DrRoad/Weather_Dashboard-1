@@ -2,7 +2,8 @@ if (!require("pacman")) install.packages("pacman")
 pacman::p_load(shiny,
                leaflet,
                DT,
-               raster)
+               raster,
+               lubridate)
 
 
 source("functions.R")
@@ -10,17 +11,48 @@ source("declarations.R")
 
 server <- function(input, output, session) {
 
+    df_raw <- reactive({
+        df_raw <- import_data()
+        return(df_raw)
+    })
     df <- reactive({
-        df <- import_data()
+        df_raw <- df_raw()
+        compared_time <- compared_time()
+
+        df_raw %>% head %>% print
+        compared_time %>% print
+        df <- df_raw[df_raw$datetime == compared_time, ]
         return(df)
     })
 
+    compared_time <- reactive({
+        # Depending on the switch, get the current time or the tietime the trader wants
+        if(input$current_time) {
+            # Get the current time, truncate it to hours so that we have the current hour
+            compared_time <- Sys.time() %>%
+                trunc('hour')
+        } else {
+            # Get time wanted by user by combining date and time.
+            # Force to Localtime (assuming trader is located/thinking in Europe/Amsterdam time)
+            # Convert to UTC to compare in dataframe coming from Datahub (which is in UTC)
+
+            compared_time <- (input$date_input %>% as.POSIXct + input$hour_input * 60 * 60) %>%
+                force_tz('Europe/Amsterdam') %>%
+                with_tz('UTC')
+        }
+        return(compared_time)
+    })
+
     output$dt1 <- DT::renderDataTable({
+        df_model()
         df()
     })
 
     df_model <- reactive({
-        df
+        df_model <- df()
+        conversion_list_GFS[[input$variable]] %>% print
+        df_model <- raster_maker(df_model, conversion_list_GFS[[input$variable]])
+        return(df_model)
     })
 
 

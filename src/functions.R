@@ -1,6 +1,7 @@
 import_data <- function() {
     df <- read.csv(data_path)
     df[df == "NULL"] <- NA
+    df$datetime <- df$datetime %>% as.POSIXct(tz='UTC')
     return(df)
 }
 

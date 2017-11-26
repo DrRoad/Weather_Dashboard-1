@@ -22,7 +22,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                          fluidRow(
                                              column(8,
                                                     offset=0,
-                                                    style="padding:0px;",
+                                                    style="padding:6px;",
                                                     div(style="height: 30px;",
                                                         dateInput("date_input",
                                                                   NULL,
@@ -31,7 +31,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                     div(style="height: 30px;",
                                                         numericInput("hour_input",
                                                                      NULL,
-                                                                     value=6)
+                                                                     value=7)
                                                     )
                                              ),
                                              column(4,
@@ -42,7 +42,20 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    value=TRUE,
                                                                    status='success')
                                              )
-                                         )
+                                         ),
+                                         pickerInput('observable',
+                                                     'Observable',
+                                                     choices=c('Temperature',
+                                                               'Windspeed',
+                                                               'Air Pressure',
+                                                               'Radiation'),
+                                                     choicesOpt = list(icon = c("glyphicon-cog",
+                                                                                "glyphicon-play",
+                                                                                "glyphicon-ok-sign",
+                                                                                "glyphicon-arrow-rig")),
+                                                     selected='Temperature')
+
+
                         ),
                         conditionalPanel(condition="input.conditionedPanels==2",
                                          helpText("Dos")

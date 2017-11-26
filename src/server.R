@@ -66,4 +66,24 @@ server <- function(input, output, session) {
 
         return(a)
     })
+
+    observeEvent({residual_grid_f(); input$model}, {
+        leafletProxy('map') %>%
+            clearGroup('model') %>%
+            # clearGroup('contourlines') %>%
+            # clearGroup('HL') %>%
+            addRasterImage(df_model(),
+                           color = cpalet_HIRLAM_background(),
+                           opacity = 0.5,
+                           group='model') %>%
+
+            addLegend(pal = cpalet_HIRLAM_background(),
+                      values =domain_HIRLAM() %>% rev,
+                      title = input$observable,
+                      layerId='model_legend') %>%
+            addLegend(pal = cpalet_circlemarkers(),
+                      values = domain_diff() %>% rev,
+                      title = "Difference",
+                      layerId='circlemarkers_legend')
+    })
 }

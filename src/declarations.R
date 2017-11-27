@@ -13,3 +13,7 @@ conversion_list_GFS <<- list("Windspeed"="gfs_wind_speed",
                              "Temperature"="gfs_temp",
                              "Air pressure"="gfs_air_pressure",
                              "Radiation"="gfs_radiation")
+conversion_list_KNMI <<- list("Windspeed"="knmi_wind",
+                              "Temperature"="knmi_temp",
+                              "Air pressure"="knmi_air_pressure",
+                              "Radiation"="knmi_radiation")

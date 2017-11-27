@@ -11,12 +11,7 @@ source("declarations.R")
 
 server <- function(input, output, session) {
 
-    # ReactiveValues ----
-    rv_sources <- reactiveValues(
-        knmi=TRUE
-    )
-
-
+    # Dataframes build up ----
     df_raw <- reactive({
         # Import the raw data
         df_raw <- import_data()
@@ -153,33 +148,33 @@ server <- function(input, output, session) {
                       title = "Difference",
                       layerId='circlemarkers_legend')
     })
-    observeEvent({df_knmi()}, {
+    observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
-        clearGroup('KNMI_markers')
-        rv_sources$knmi %>% print
+            clearGroup('KNMI_markers')
 
-        if (rv_sources$knmi){
-            print("Plotting KNMI markers")
-            df_knmi <- df_knmi()
-
-            df_knmi %>% head %>% print
-
-            leafletProxy('map') %>%
-                # clearGroup("KNMI_markers") %>%
-                addCircleMarkers(lat = df_knmi$knmi_lat,
-                                 lng = df_knmi$knmi_lon,
-                                 radius = 8,
-                                 weight = 1,
-                                 popup=paste0("KNMI", "<br>",
-                                              "stationname: ", df_knmi$knmi_name, "<br>",
-                                              "KNMI:: ", df_knmi$knmi %>% round(2),"<br>",
-                                              "Model: ", df_knmi$gfs %>% round(2)),
-                                 fillColor = cpalet_circlemarkers()(df_knmi$dif),
-                                 color='black',
-                                 fillOpacity=1,
-                                 opacity = 1,
-                                 group='KNMI_markers')
+        if (!input$knmi_switch) {
+            # No need to do anything else
+            return()
         }
+        print("Plotting KNMI markers")
+        df_knmi <- df_knmi()
+
+        leafletProxy('map') %>%
+            # clearGroup("KNMI_markers") %>%
+            addCircleMarkers(lat = df_knmi$knmi_lat,
+                             lng = df_knmi$knmi_lon,
+                             radius = 8,
+                             weight = 1,
+                             popup=paste0("KNMI", "<br>",
+                                          "stationname: ", df_knmi$knmi_name, "<br>",
+                                          "KNMI:: ", df_knmi$knmi %>% round(2),"<br>",
+                                          "Model: ", df_knmi$gfs %>% round(2)),
+                             fillColor = cpalet_circlemarkers()(df_knmi$dif),
+                             color='black',
+                             fillOpacity=1,
+                             opacity = 1,
+                             group='KNMI_markers')
+
 
     })
 }

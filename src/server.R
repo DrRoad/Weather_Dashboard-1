@@ -68,11 +68,36 @@ server <- function(input, output, session) {
         df_knmi <- df[!df[[observable_knmi]] %>% is.na,
                       c(observable_knmi, observable_gfs, 'knmi_lat', 'knmi_lon', 'knmi_name')]
         df_knmi <- df_knmi[!duplicated(df_knmi), ]
-        names(df_knmi)[c(1,2)] <- c('knmi', 'gfs')
+        names(df_knmi)[c(1, 2)] <- c('knmi', 'gfs')
         df_knmi$dif <- df_knmi$knmi %>% as.numeric - df_knmi$gfs
 
         return(df_knmi)
     })
+    df_owm <- reactive({
+        df <- df()
+        observable_owm <- conversion_list_OWM[[input$observable]]
+        observable_gfs <- conversion_list_GFS[[input$observable]]
+        df_owm <- df[!df[[observable_owm]] %>% is.na,
+                     c(observable_owm, observable_gfs, 'owm_lat', 'owm_lon', 'owm_name')]
+        df_owm <- df_owm[!duplicated(df_owm), ]
+        names(df_owm)[c(1, 2)] <- c('owm', 'gfs')
+        df_owm$dif <- df_owm$owm %>% as.numeric - df_owm$gfs
+
+        return(df_owm)
+    })
+    df_metoffice <- reactive({
+        df <- df()
+        observable_metoffice <- conversion_list_MetOffice[[input$observable]]
+        observable_gfs <- conversion_list_GFS[[input$observable]]
+        df_metoffice <- df[!df[[observable_metoffice]] %>% is.na,
+                     c(observable_metoffice, observable_gfs, 'metoffice_lat', 'metoffice_lon', 'metoffice_name')]
+        df_metoffice <- df_metoffice[!duplicated(df_metoffice), ]
+        names(df_metoffice)[c(1, 2)] <- c('metoffice', 'gfs')
+        df_metoffice$dif <- df_metoffice$metoffice %>% as.numeric - df_metoffice$gfs
+
+        return(df_metoffice)
+    })
+
 
     # colorpalettes, domains and other boring stuff ----
     domain_model <- reactive ({
@@ -174,7 +199,59 @@ server <- function(input, output, session) {
                              fillOpacity=1,
                              opacity = 1,
                              group='KNMI_markers')
+    })
+    observeEvent({df_owm(); input$owm_switch}, {
+        leafletProxy('map') %>%
+            clearGroup('OWM_markers')
 
+        if (!input$owm_switch) {
+            # No need to do anything else
+            return()
+        }
+        print("Plotting OWM markers")
+        df_owm <- df_owm()
 
+        leafletProxy('map') %>%
+            # clearGroup("KNMI_markers") %>%
+            addCircleMarkers(lat = df_owm$owm_lat,
+                             lng = df_owm$owm_lon,
+                             radius = 8,
+                             weight = 1,
+                             popup=paste0("OWM", "<br>",
+                                          "stationname: ", df_owm$owm_name, "<br>",
+                                          "OWM: ", df_owm$owm %>% round(2),"<br>",
+                                          "Model: ", df_owm$gfs %>% round(2)),
+                             fillColor = suppressWarnings(cpalet_circlemarkers()(df_owm$dif)),
+                             color='orange',
+                             fillOpacity=1,
+                             opacity = 1,
+                             group='OWM_markers')
+    })
+    observeEvent({df_metoffice(); input$metoffice_switch}, {
+        leafletProxy('map') %>%
+            clearGroup('MetOffice_markers')
+
+        if (!input$metoffice_switch) {
+            # No need to do anything else
+            return()
+        }
+        print("Plotting MetOffice markers")
+        df_metoffice <- df_metoffice()
+
+        leafletProxy('map') %>%
+            # clearGroup("KNMI_markers") %>%
+            addCircleMarkers(lat = df_metoffice$metoffice_lat,
+                             lng = df_metoffice$metoffice_lon,
+                             radius = 8,
+                             weight = 1,
+                             popup=paste0("MetOffice", "<br>",
+                                          "stationname: ", df_metoffice$metoffice_name, "<br>",
+                                          "MetOffice:: ", df_metoffice$metoffice %>% round(2),"<br>",
+                                          "Model: ", df_metoffice$gfs %>% round(2)),
+                             fillColor = cpalet_circlemarkers()(df_metoffice$dif),
+                             color='white',
+                             fillOpacity=1,
+                             opacity = 1,
+                             group='MetOffice_markers')
     })
 }

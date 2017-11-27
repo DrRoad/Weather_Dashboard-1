@@ -49,11 +49,7 @@ server <- function(input, output, session) {
         return(compared_time)
     })
 
-#     output$dt1 <- DT::renderDataTable({
-#         df_model_raster()
-#         df()
-#     })
-
+    # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
         if(nrow(df)==0) {return()}

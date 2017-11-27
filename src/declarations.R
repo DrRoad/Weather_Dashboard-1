@@ -25,3 +25,14 @@ conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Temperature"="metoffice_temp",
                                    "Air pressure"="metoffice_air_pressure",
                                    "Radiation"="metoffice_radiation")
+
+
+# Windparkfile
+Windparks_filename <- 'H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_Eneco.csv'
+Windparks <- Windparks_filename %>% read.csv %>% data.frame
+
+external_windparks_filename <- "H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_External.csv"
+external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
+
+windparks_uk_filename <- "H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_External_UK.csv"
+windparks_uk <- windparks_uk_filename %>% read.csv %>% data.frame

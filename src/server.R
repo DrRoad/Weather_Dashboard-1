@@ -52,7 +52,7 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {return()}
+        if(nrow(df)==0) {print("Nothing");return()}
         observable_gfs <- conversion_list_GFS[[input$observable]]
         df_model_raster <- raster_maker(df, observable_gfs)
         return(df_model_raster)
@@ -156,17 +156,16 @@ server <- function(input, output, session) {
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
             addRasterImage(df_model_raster,
-                           color = cpalet_model_background(),
-                           opacity = 0.5,
+                           color=cpalet_model_background(),
+                           opacity=0.5,
                            group='model') %>%
-
-            addLegend(pal = cpalet_model_background(),
-                      values =domain_model() %>% rev,
-                      title = input$observable,
+            addLegend(pal=cpalet_model_background(),
+                      values=domain_model() %>% rev,
+                      title=input$observable,
                       layerId='model_legend') %>%
-            addLegend(pal = cpalet_circlemarkers(),
-                      values = domain_diff() %>% rev,
-                      title = "Difference",
+            addLegend(pal=cpalet_circlemarkers(),
+                      values=domain_diff() %>% rev,
+                      title="Difference",
                       layerId='circlemarkers_legend')
     })
     observeEvent({df_knmi(); input$knmi_switch}, {
@@ -182,18 +181,18 @@ server <- function(input, output, session) {
 
         leafletProxy('map') %>%
             # clearGroup("KNMI_markers") %>%
-            addCircleMarkers(lat = df_knmi$knmi_lat,
-                             lng = df_knmi$knmi_lon,
-                             radius = 8,
-                             weight = 1,
+            addCircleMarkers(lat=df_knmi$knmi_lat,
+                             lng=df_knmi$knmi_lon,
+                             radius=8,
+                             weight=1,
                              popup=paste0("KNMI", "<br>",
                                           "stationname: ", df_knmi$knmi_name, "<br>",
                                           "KNMI:: ", df_knmi$knmi %>% round(2),"<br>",
                                           "Model: ", df_knmi$gfs %>% round(2)),
-                             fillColor = suppressWarnings(cpalet_circlemarkers()(df_knmi$dif)),
+                             fillColor=suppressWarnings(cpalet_circlemarkers()(df_knmi$dif)),
                              color='black',
                              fillOpacity=1,
-                             opacity = 1,
+                             opacity=1,
                              group='KNMI_markers')
     })
     observeEvent({df_owm(); input$owm_switch}, {
@@ -209,18 +208,18 @@ server <- function(input, output, session) {
 
         leafletProxy('map') %>%
             # clearGroup("KNMI_markers") %>%
-            addCircleMarkers(lat = df_owm$owm_lat,
-                             lng = df_owm$owm_lon,
-                             radius = 8,
-                             weight = 1,
+            addCircleMarkers(lat=df_owm$owm_lat,
+                             lng=df_owm$owm_lon,
+                             radius=8,
+                             weight=1,
                              popup=paste0("OWM", "<br>",
                                           "stationname: ", df_owm$owm_name, "<br>",
                                           "OWM: ", df_owm$owm %>% round(2),"<br>",
                                           "Model: ", df_owm$gfs %>% round(2)),
-                             fillColor = suppressWarnings(cpalet_circlemarkers()(df_owm$dif)),
+                             fillColor=suppressWarnings(cpalet_circlemarkers()(df_owm$dif)),
                              color='orange',
                              fillOpacity=1,
-                             opacity = 1,
+                             opacity=1,
                              group='OWM_markers')
     })
     observeEvent({df_metoffice(); input$metoffice_switch}, {
@@ -236,18 +235,18 @@ server <- function(input, output, session) {
 
         leafletProxy('map') %>%
             # clearGroup("KNMI_markers") %>%
-            addCircleMarkers(lat = df_metoffice$metoffice_lat,
-                             lng = df_metoffice$metoffice_lon,
-                             radius = 8,
-                             weight = 1,
+            addCircleMarkers(lat=df_metoffice$metoffice_lat,
+                             lng=df_metoffice$metoffice_lon,
+                             radius=8,
+                             weight=1,
                              popup=paste0("MetOffice", "<br>",
                                           "stationname: ", df_metoffice$metoffice_name, "<br>",
                                           "MetOffice:: ", df_metoffice$metoffice %>% round(2),"<br>",
                                           "Model: ", df_metoffice$gfs %>% round(2)),
-                             fillColor = suppressWarnings(cpalet_circlemarkers()(df_metoffice$dif)),
+                             fillColor=suppressWarnings(cpalet_circlemarkers()(df_metoffice$dif)),
                              color='white',
                              fillOpacity=1,
-                             opacity = 1,
+                             opacity=1,
                              group='MetOffice_markers')
     })
 }

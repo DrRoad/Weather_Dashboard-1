@@ -1,4 +1,4 @@
-PARK,OWNER,lat,MW,lon
+PARK,OWNER,lat,max_MW,lon
 WP Leeuwarden,?,53.111713,1.8,5.452985
 Gruttoweg,a Campo,52.328531,19.71,5.373924
 Dintelmond Sabrinapolder,Activabedrijf Wind Nederland BV (RWE Essent),51.6592,0.85,4.370623577
@@ -316,3 +316,88 @@ Olaz,Zeeuwind-1,51.466026,1.8,3.717654
 Dreischor,Zeeuwind-4,51.706431,0.9,4.001636
 WP Zeshoek,Zeshoek,52.28314,6,5.458217
 ,Zuidenwind,51.30507216,2.35,5.936984443
+Glenmuckloch,2020 Renewables,55.3958,25.6,-4.04861
+Inverclyde (Greenock Resubmission),2020 Renewables,55.9183,24,-4.72889
+North Tolsta,2020 Renewables,58.3131,46.2,-6.70944
+Druim Leathann,2020 Renewables,58.3381,42,-6.25111
+Evishagaran,ABO Wind,54.9478,35,-6.83806
+Stornoway Wind Farm,AMEC Foster Wheeler; EDF Energy Renewables,58.2103,180,-6.47667
+Carno Wind Farm Extension - Phase III,Amegni,52.5331,32.5,-3.59361
+Elginny Hill (Resubmission),Antrim Wind,54.9314,20,-6.20583
+Middle Muir,Banks Renewables,55.5083,51,-3.80028
+Kype Muir Extension,Banks Renewables,55.6267,51,-4.035
+Kype Muir,Banks Renewables,55.6269,88.4,-4.03278
+Wathegar Extension,BayWa r.e. renewable energy GmbH,58.4369,18.45,-3.22111
+Crockandun,Brookfield,54.7325,18,-6.78694
+Tralorg,Brookfield,55.2364,20,-4.80556
+Penbreck,Brookfield,55.4753,27,-4.01056
+Kennoxhead,Brookfield,55.4978,64.4,-3.94611
+Larbrax (Resubmission),Brookfield Renewable Energy Group,54.91,20,-5.16639
+Sandy Knowe (Resubmission),Burcote Wind,55.3719,48,-4.05111
+Llyn Brenig,China Guangdong Nuclear Power Group (CGN),53.1003,37.6,-3.50861
+Sanquhar 'Six',Community Windpower,55.3378,19.8,-4.07806
+Sneddon Law,Community Windpower,55.6431,37.5,-4.39472
+Aikengall IIa,Community Windpower,55.8933,75.5,-2.4525
+Beatrice,Copenhagen Infrastructure Partners (CIP); Scottish & Southern Energy Plc (SSE); SDIC Power,58.2536,588,-2.88611
+Creag Riabhach,Creag Riabhach Wind Farm Ltd.,58.2192,72.6,-4.51111
+Hornsea Project One,DONG Energy A/S,53.8786,1197,1.93806
+Hornsea Project Two,DONG Energy A/S,53.9658,1800,1.89694
+Walney Extension East,DONG Energy A/S,54.0869,329,-3.73778
+Walney Extension West,DONG Energy A/S,54.0869,330,-3.73778
+Pollnalaght,DW Consultancy Ltd; Energia,54.5817,38.4,-7.47417
+Heckington Fen,Ecotricity,52.9953,66,-0.210556
+Blyth Offshore Wind Demonstration Project (Phase 2),EDF Energy Nouvelles Group,55.15,30,-1.45444
+Blyth Offshore Wind Demonstration Project (Phase 3),EDF Energy Nouvelles Group,55.15,30,-1.45444
+Blyth Offshore Wind Demonstration Project (Phase 1),EDF Energy Nouvelles Group,55.15,41.5,-1.45444
+Craigton and Spittalhill,EDF Energy Renewables,56.0728,21,-4.14694
+Dorenell,EDF Energy Renewables,57.3511,177,-3.13111
+Moray Firth Eastern Development Area,EDP RenovÃƒÂ¡veis SA,58.1958,1000,-2.78
+Twentyshilling Hill,Element Power,55.3197,27,-3.90028
+Rathsherry,Energia Renewables,54.9419,21,-6.19444
+Llandinam - Repower,Eurus Energy; ScottishPower Renewables,52.4364,102,-3.41361
+Mochrum Fell,Falck Renewables,55.0519,24,-4.00417
+Galloper,Green Investment Bank (GIB); Innogy AG; Macquarie Capital; Siemens Financial Services; Sumitomo Corporation,51.875,336,2.03889
+Dalquhandy,Hargreaves Resources,55.5872,45,-3.89
+East Anglia ONE,Iberdrola,52.2339,714,2.47778
+Windy Edge,Infinis,55.2883,22.5,-2.79806
+Greengairs Landfill Site,Infinis,55.8983,27,-3.93583
+Afton,InfraRed Capital Partners,55.3108,50,-4.17111
+Dogger Bank Creyke Beck A,Innogy AG; Scottish & Southern Energy Plc (SSE); Statoil ASA,54.8742,1200,1.79806
+Dogger Bank Creyke Beck B,Innogy AG; Scottish & Southern Energy Plc (SSE); Statoil ASA,54.8742,1200,1.79806
+Dogger Bank Teesside B,Innogy AG; Scottish & Southern Energy Plc (SSE); Statoil ASA,54.9889,1200,2.22778
+Dogger Bank Teesside A,Innogy AG; Scottish & Southern Energy Plc (SSE); Statoil ASA,54.9889,1200,2.22778
+Triton Knoll,Innogy AG; Statkraft,53.1061,900,0.865
+Mynydd y Gwair (Resubmission),Innogy Renewables UK Limited,51.7578,40,-3.95583
+Brechfa Forest East,Innogy Renewables UK Limited,52.0094,36,-4.07972
+Carnedd Wen,Innogy Renewables UK Limited,52.6808,150,-3.57028
+Clocaenog Forest,Innogy Renewables UK Limited,53.0714,96,-3.47306
+Glen Kyllachy,Innogy Renewables UK Limited,57.3206,50,-4.08556
+Bad a Cheo,Innogy Renewables UK Limited,58.4147,29.9,-3.42639
+Glen Ullinish,Kilmac Energy,57.3947,42,-6.41472
+Muaitheabhal South Extension,Lewis Wind Power,58.0014,21.6,-6.5875
+Muaitheabhal East Extension,Lewis Wind Power,58.0169,21.6,-6.50806
+Muaitheabhal (Uisenis),Lewis Wind Power,58.0206,118.8,-6.54028
+Crossdykes (Community Share),Muirhall Energy,55.1803,48,-3.16556
+Tom Nan Clach,Nanclach Ltd,57.3822,39,-3.88111
+Cloich Forest,Partnerships for Renewables,55.7206,54,-3.26056
+Camilty,Partnerships for Renewables,55.8183,20.4,-3.50972
+West Benhar (Community Share),Partnerships for Renewables,55.8356,27.2,-3.75444
+Scout Moor Extension (Community Share),Peel Energy,53.6639,36.8,-2.26944
+Llanbrynmair,RES,52.6425,60,-3.56306
+Altahullion Phase III,RES,54.9606,27.6,-7.03278
+Craiggore,RES,54.9967,18,-6.81278
+Castlecraig,RES,55.0417,25,-7.18056
+Solwaybank (Resubmission),RES,55.1042,37.5,-3.10806
+Coire Na Cloiche,RockbySea,57.7939,29.9,-4.36528
+Halsary Forest,ScottishPower Renewables,58.4333,30,-3.40611
+Viking Wind Farm,Shetland Charitable Trust; SSE Renewables; Viking Wind Ltd,60.3319,370.8,-1.23917
+Tangy III (Repowering),SSE Renewables,55.4925,36.8,-5.68139
+Calliachar North,SSE Renewables,56.5761,21,-3.865
+Stronelairg,SSE Renewables,57.0964,228,-4.43528
+Hywind Scotland Pilot Park,Statoil ASA,57.4839,30,-1.36194
+Pigeon Top,TCI Renewables,54.5828,27,-7.45139
+Aultmore II,Vattenfall,57.6164,30,-2.88889
+"European Offshore Wind Deployment Centre (EOWDC, Aberdeen Bay)",Vattenfall AB,57.225,92.4,-1.99278
+Gass,WilloWind Energy Ltd.,54.9614,20.7,-4.73111
+Stranoch,WPDL,55.0244,72,-4.87528
+Kellas,,57.5767,18.4,-3.38083

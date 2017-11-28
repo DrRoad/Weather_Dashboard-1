@@ -249,4 +249,49 @@ server <- function(input, output, session) {
                              opacity=1,
                              group='MetOffice_markers')
     })
+    observeEvent({input$windparks_Eneco}, {
+        leafletProxy('map') %>%
+            clearGroup('eneco_windparks')
+        if (!input$windparks_Eneco) {
+            # Done here!
+            return()
+        }
+
+        icons_size <- icons(
+            iconUrl=windparkiconurl,
+            iconHeight = 20 * Windparks$max_MW / Windparks$max_MW %>% max + 20,
+            iconWidth = 20 * Windparks$max_MW / Windparks$max_MW %>% max + 20
+        )
+        leafletProxy('map') %>%
+            addMarkers(lat = Windparks$lat,
+                       lng = Windparks$lon,
+                       icon = icons_size,
+                       popup=paste0(Windparks$Location, "<br>",
+                                    "capacity: ", Windparks$max_MW," MW<br>"),
+                       group="eneco_windparks")
+
+    })
+    observeEvent({input$windparks_External}, {
+        leafletProxy('map') %>%
+            clearGroup('external_windparks')
+        if (!input$windparks_External) {
+            # Done here!
+            return()
+        }
+
+        icons_size <- icons(
+            iconUrl=windparkiconurl_grey,
+            iconHeight = 20 * external_windparks$max_MW / external_windparks$max_MW %>% max + 20,
+            iconWidth = 20 * external_windparks$max_MW / external_windparks$max_MW %>% max + 20
+        )
+        leafletProxy('map') %>%
+            addMarkers(lat = external_windparks$lat,
+                       lng = external_windparks$lon,
+                       icon = icons_size,
+                       popup=paste0(external_windparks$PARK, "<br>",
+                                    "Owner: ", external_windparks$OWNER, "<br>",
+                                    "capacity: ", external_windparks$max_MW," MW<br>"),
+                       group="external_windparks")
+
+    })
 }

@@ -40,6 +40,24 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 value=TRUE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
+                                ),
+                                div(
+                                    style='height: 25px;',
+                                    switchInput('windparks_Eneco',
+                                                label='Wind Eneco',
+                                                size='small',
+                                                value=TRUE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
+                                ),
+                                div(
+                                    style='height: 25px;',
+                                    switchInput('windparks_External',
+                                                label='Wind Other',
+                                                size='small',
+                                                value=FALSE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
                                 )
                             ),
                             HTML("<br/>"),

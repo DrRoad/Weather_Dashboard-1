@@ -75,7 +75,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                   'Radiation'),
                                         choicesOpt = list(icon = c("glyphicon glyphicon-copyright-mark",
                                                                    "glyphicon-flag",
-                                                                   "glyphicon glyphicon-font",
+                                                                   "glyphicon glyphicon-dashboard",
                                                                    "glyphicon-certificate")),
                                         selected='Temperature')
 
@@ -88,7 +88,6 @@ ui <- dashboardPage(title="Weather Dashboard",
                         conditionalPanel(condition="input.conditionedPanels==3",
                                          helpText("Tres!")
                         )
-
                     ),
                     dashboardBody({
 

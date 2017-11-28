@@ -3,7 +3,6 @@ library(pacman)
 pacman::p_load(shiny,
                leaflet,
                shinydashboard,
-               DT,
                shinyWidgets)
 
 

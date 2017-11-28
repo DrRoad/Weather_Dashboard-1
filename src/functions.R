@@ -12,6 +12,7 @@ import_data_sql <- function(max_hours_back = 5) {
                     minimal_datetime,
                     maximal_datetime)
     a = run.query(stmt)
+    return(a$result)
 }
 
 run.query <- function(stmt) {

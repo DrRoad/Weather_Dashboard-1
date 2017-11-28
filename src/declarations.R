@@ -2,7 +2,7 @@
 # on which environment you are working
 Sys.setenv(TZ='GMT')
 
-base_path = "/home/vmathias/Sources/Weather_Dashboard/data/"
+base_path = "../data/"
 
 data_path = file.path(base_path, "data_hot_tub.csv")
 

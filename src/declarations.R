@@ -2,7 +2,9 @@
 # on which environment you are working
 Sys.setenv(TZ='GMT')
 
-data_path = "H:\\Sources\\Weather_Dashboard\\data\\data_hot_tub.csv"
+base_path = "/home/vmathias/Sources/Weather_Dashboard/data/"
+
+data_path = file.path(base_path, "data_hot_tub.csv")
 
 conversion_list_HIRLAM <<- list("Windspeed"="windspeed",
                                 "Temperature"="Temperature_height_above_ground",
@@ -28,11 +30,11 @@ conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
 
 
 # Windparkfile
-Windparks_filename <- 'H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_Eneco.csv'
+Windparks_filename <- file.path(base_path, 'Windmills/windparks_Eneco.csv')
 Windparks <- Windparks_filename %>% read.csv %>% data.frame
 
-external_windparks_filename <- "H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_External.csv"
+external_windparks_filename <- file.path(base_path, "Windmills/windparks_External.csv")
 external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 
-windparks_uk_filename <- "H:\\Sources\\Weather_Dashboard\\data\\Windmills\\windparks_External_UK.csv"
+windparks_uk_filename <- file.path(base_path, "Windmills/windparks_External_UK.csv")
 windparks_uk <- windparks_uk_filename %>% read.csv %>% data.frame

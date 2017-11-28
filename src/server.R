@@ -3,7 +3,8 @@ pacman::p_load(shiny,
                leaflet,
                DT,
                raster,
-               lubridate)
+               lubridate,
+               RMySQL)
 
 
 source("functions.R")
@@ -12,6 +13,10 @@ source("declarations.R")
 server <- function(input, output, session) {
 
     # Dataframes build up ----
+    df_raw_sql <- reactive({
+        df_raw_sql <- import_data_sql()
+        return(df_raw_sql)
+    })
     df_raw <- reactive({
         # Import the raw data
         df_raw <- import_data()

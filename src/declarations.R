@@ -35,9 +35,6 @@ Windparks <- Windparks_filename %>% read.csv %>% data.frame
 
 external_windparks_filename <- file.path(base_path, "Windparks/windparks_External.csv")
 external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
-#
-# windparks_uk_filename <- file.path(base_path, "Windparks/windparks_External_UK.csv")
-# windparks_uk <- windparks_uk_filename %>% read.csv %>% data.frame
 
 # Windparks icons
 windparkiconurl <- "../data/Windparks/wfarm.png"

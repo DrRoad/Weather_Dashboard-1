@@ -43,3 +43,16 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
 
+
+stmt_gfs_history <- "SELECT gfs.datetime as datetime,
+                            gfs.temperature_level_0 - 273.15 as gfs_temp,
+                            gfs.10_metre_wind_speed_level_10 as gfs_wind,
+                            gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+                            gfs.surface_pressure_level_0 as gfs_air_pressure
+FROM gfs_data_source gfs INNER JOIN
+(
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM gfs_data_source
+    WHERE datetime >= '%s' AND datetime < '%s' AND lat = %.2f AND lon = %.2f
+    GROUP BY datetime, lat, lon
+) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"

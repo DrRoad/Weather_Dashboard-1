@@ -41,7 +41,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw()
+        df_raw <- df_raw_sql()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print
@@ -57,6 +57,7 @@ server <- function(input, output, session) {
         if(input$current_time) {
             # Get the current time, truncate it to hours so that we have the current hour
             compared_time <- Sys.time() %>%
+                with_tz('UTC') %>%
                 trunc('hour')
         } else {
             # Get time wanted by user by combining date and time.
@@ -336,6 +337,7 @@ server <- function(input, output, session) {
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%
+            with_tz('Europe/Amsterdam') %>%
             strftime("%d %b %H:%M", tz='Europe/Amsterdam')
     })
     output$knmi_history_plot <- renderPlot({
@@ -343,27 +345,46 @@ server <- function(input, output, session) {
             # No plot necessary
             return()
         }
+        # Datetime of begin/end of the day
+        datetime_begin <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            trunc('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        datetime_end <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            ceiling_date('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
         # Get all rows for the specific KNMI station since beginning of this day
-        stmt <- sprintf("SELECT * FROM knmi_data_source where stationname = '%s' and datetime >= '%s' order by datetime",
+        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s' ORDER BY datetime",
                         rv$knmi_station_history,
-                        Sys.time() %>%
-                            with_tz('Europe/Amsterdam') %>%
-                            trunc('days') %>%
-                            with_tz('UTC') %>%
-                            strftime('%Y-%m-%d %H:%M:%S')
-                            )
-        df1 <- run.query(stmt)$result
-        # Make it datetime, but keep UTC
-        df1$datetime <- df1$datetime %>% as.POSIXct()
-        ggplot
-        p <- ggplot(df1)
-        p <- p + geom_line(data=df1, aes_string('datetime', conversion_list_KNMI_plot[[input$observable]]))
-        knmi_lat <- round(df1[1, 'lat'] / 0.25, 0) * 0.25
-        knmi_lon <- round(df1[1, 'lon'] / 0.25, 0) * 0.25
-        df_raw_sql <- df_raw_sql()
-        df2 <- df_raw_sql[df_raw_sql$lat == knmi_lat & df_raw_sql$lon == knmi_lon, ]
-        df2$datetime <- df2$datetime %>% as.POSIXct
-        p <- p + geom_line(data=df2, aes_string('datetime', conversion_list_GFS[[input$observable]]))
+                        datetime_begin
+        )
+        df_knmi_history_plot <- run.query(stmt)$result
+        # Make it datetime, and Europe/Amsterdam
+        df_knmi_history_plot$datetime <- df_knmi_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
+        p <- ggplot()
+        p <- p + geom_line(data=df_knmi_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_KNMI_plot[[input$observable]]),
+                           color='red')
+        # Determine the lat/lon to join KNMI on with GFS
+        knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.25, 0) * 0.25
+        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.25, 0) * 0.25
+        # Construct the stmt by filling in the blanks in the base stmt
+        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
+                        datetime_begin,
+                        datetime_end,
+                        knmi_lat,
+                        knmi_lon)
+        df_gfs_history_plot <- run.query(stmt)$result
+        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        p <- p + geom_line(data=df_gfs_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black')
+        p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
 }

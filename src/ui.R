@@ -78,7 +78,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                        div(style="height: 33px;",
                                            numericInput("hour_input",
                                                         NULL,
-                                                        value=Sys.time() %>% hour)
+                                                        value=Sys.time() %>% with_tz('Europe/Amsterdam') %>% hour)
                                        )
                                 ),
                                 column(5,
@@ -91,8 +91,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                           status='success')
                                        ),
                                        div(style="height: 20px;",
-                                           textOutput("compared_time",
-                                                      )
+                                           textOutput("compared_time")
                                        )
                                 )
                             ),

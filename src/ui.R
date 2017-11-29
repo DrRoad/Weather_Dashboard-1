@@ -133,6 +133,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                               width="100%")
                                          ),
                                          column(3,
+                                                align='center',
                                                 offset=0,
                                                 style='padding: 0px;',
                                                 box(title='KNMI history',

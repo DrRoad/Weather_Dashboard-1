@@ -43,6 +43,14 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
 
+coloring_IGCC <- c("DE" = "white",
+                   "NL" = "orange",
+                   "BE" = "red",
+                   "FR" = "blue",
+                   "DK" = "green",
+                   "AT" = "violet",
+                   "CH" = "black",
+                   "CZ" = "khaki")
 
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
                             gfs.temperature_level_0 - 273.15 as gfs_temp,
@@ -56,3 +64,12 @@ FROM gfs_data_source gfs INNER JOIN
     WHERE datetime >= '%s' AND datetime < '%s' AND lat = %.2f AND lon = %.2f
     GROUP BY datetime, lat, lon
 ) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"
+
+stmt_igcc <- "SELECT mk1.*
+FROM mkonline_data_source mk1 INNER JOIN
+(
+    SELECT Date, MAX(processed_time) as processed_time
+    FROM mkonline_data_source
+    WHERE Date >= '%s'
+    GROUP BY Date
+) mk2 on mk1.Date = mk2.Date AND mk1.processed_time = mk2.processed_time ORDER BY Date"

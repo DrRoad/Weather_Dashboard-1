@@ -55,16 +55,18 @@ raster_maker <- function(data, observable){
     return(residual_grid)
 }
 
-get_IGCC_data_new <- function(datetime) {
-    df_IGCC <- IGCC_dir %>%
-        list.files(full.names=TRUE) %>%
-        tail(1) %>%
-        fread(data.table=FALSE)
+get_IGCC_data <- function() {
+    stmt <- sprintf(stmt_igcc %>% strwrap(width=10000, simplify=TRUE),
+                    Sys.time() %>%
+                        with_tz("Europe/Amsterdam") %>%
+                        trunc('days') %>%
+                        with_tz('UTC') %>%
+                        strftime('%Y-%m-%d %H:%M:%S'))
+    df_IGCC <- run.query(stmt)$result
     df_IGCC$Date <- df_IGCC$Date %>%
         strptime(format="%Y-%m-%d %H:%M:%S", tz='UTC') %>%
         with_tz('Europe/Amsterdam') %>%
         as.POSIXct
     df_IGCC$Date <- df_IGCC$Date + 7.5 * 60
-    df_IGCC <- df_IGCC[df_IGCC$Date %>% as.Date(tz='Europe/Amsterdam') == datetime, ]
     return(df_IGCC)
 }

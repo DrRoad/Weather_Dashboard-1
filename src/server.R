@@ -4,7 +4,9 @@ pacman::p_load(shiny,
                raster,
                lubridate,
                RMySQL,
-               ggplot2)
+               ggplot2,
+               stringr,
+               reshape2)
 
 
 source("functions.R")
@@ -15,6 +17,7 @@ rv <- reactiveValues(knmi_station_history = NULL)
 server <- function(input, output, session) {
     # auto invalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
+    autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -41,7 +44,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw_sql()
+        df_raw <- df_raw()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print
@@ -390,8 +393,18 @@ server <- function(input, output, session) {
 
     # IGCC ----
     IGCC_data <- reactive({
-        autoInvalidateIGCC()
-        df_IGCC <- get_IGCC_data_new(Sys.Date()) %>% head(-1)
+        autoInvalidate_IGCC()
+        df_IGCC <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Fetching IGCC data',
+            detail='Always and truly, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                get_IGCC_data()
+            })
+        return(df_IGCC)
     })
     IGCC_data_export <- reactive({
         df_IGCC <- IGCC_data()
@@ -433,8 +446,8 @@ server <- function(input, output, session) {
                      color='black',
                      stat='identity') +
             scale_fill_manual(values=coloring_IGCC) +
-            scale_x_datetime(limits=c(Sys.Date() %>% as.POSIXct %>% trunc('days') %>% as.POSIXct,
-                                      (Sys.Date() +1) %>% as.POSIXct) %>% trunc('days') %>% as.POSIXct,
+            scale_x_datetime(limits=c(Sys.Date() %>% as.POSIXct %>% with_tz('Europe/Amsterdam') %>% trunc('days') %>% as.POSIXct,
+                                     (Sys.Date() +1) %>% as.POSIXct) %>% with_tz('Europe/Amsterdam')  %>% trunc('days') %>% as.POSIXct,
                              breaks=date_breaks('2 hours'),
                              expand=c(0, 0),
                              minor_breaks=date_breaks('1 hours'),
@@ -452,7 +465,7 @@ server <- function(input, output, session) {
             annotate("text",
                      x = Sys.Date() %>% as.POSIXct,
                      y = -Inf,
-                     vjust=0,
+                     vjust=-.1,
                      hjust=0,
                      label="Imported"
             ) + theme(legend.position = 'bottom') +

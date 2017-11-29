@@ -343,6 +343,7 @@ server <- function(input, output, session) {
             # No plot necessary
             return()
         }
+        # Get all rows for the specific KNMI station since beginning of this day
         stmt <- sprintf("SELECT * FROM knmi_data_source where stationname = '%s' and datetime >= '%s' order by datetime",
                         rv$knmi_station_history,
                         Sys.time() %>%
@@ -356,7 +357,13 @@ server <- function(input, output, session) {
         df1$datetime <- df1$datetime %>% as.POSIXct()
         ggplot
         p <- ggplot(df1)
-        p <- p =geom_line(aes_string('datetime', conversion_list_KNMI_plot[[input$observable]]))
+        p <- p + geom_line(data=df1, aes_string('datetime', conversion_list_KNMI_plot[[input$observable]]))
+        knmi_lat <- round(df1[1, 'lat'] / 0.25, 0) * 0.25
+        knmi_lon <- round(df1[1, 'lon'] / 0.25, 0) * 0.25
+        df_raw_sql <- df_raw_sql()
+        df2 <- df_raw_sql[df_raw_sql$lat == knmi_lat & df_raw_sql$lon == knmi_lon, ]
+        df2$datetime <- df2$datetime %>% as.POSIXct
+        p <- p + geom_line(data=df2, aes_string('datetime', conversion_list_GFS[[input$observable]]))
         return(p)
     })
 }

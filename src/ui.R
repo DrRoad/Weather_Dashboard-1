@@ -143,7 +143,20 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                     heigth=300,
                                                     fluidRow(
                                                         plotOutput('knmi_history_plot',
-                                                                   height="250")
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                ),
+                                                box(title='IGCC',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    color='lime',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('igcc_plot',
+                                                                   height="250",
+                                                                   width="90%")
                                                     )
                                                 )
                                          )

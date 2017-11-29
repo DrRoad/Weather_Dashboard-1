@@ -54,3 +54,17 @@ raster_maker <- function(data, observable){
     proj4string(residual_grid) <- CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
     return(residual_grid)
 }
+
+get_IGCC_data_new <- function(datetime) {
+    df_IGCC <- IGCC_dir %>%
+        list.files(full.names=TRUE) %>%
+        tail(1) %>%
+        fread(data.table=FALSE)
+    df_IGCC$Date <- df_IGCC$Date %>%
+        strptime(format="%Y-%m-%d %H:%M:%S", tz='UTC') %>%
+        with_tz('Europe/Amsterdam') %>%
+        as.POSIXct
+    df_IGCC$Date <- df_IGCC$Date + 7.5 * 60
+    df_IGCC <- df_IGCC[df_IGCC$Date %>% as.Date(tz='Europe/Amsterdam') == datetime, ]
+    return(df_IGCC)
+}

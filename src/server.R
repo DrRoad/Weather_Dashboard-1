@@ -387,4 +387,75 @@ server <- function(input, output, session) {
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
+
+    # IGCC ----
+    IGCC_data <- reactive({
+        autoInvalidateIGCC()
+        df_IGCC <- get_IGCC_data_new(Sys.Date()) %>% head(-1)
+    })
+    IGCC_data_export <- reactive({
+        df_IGCC <- IGCC_data()
+        export <- names(df_IGCC)[grepl(names(df_IGCC), pattern='export_vol')]
+        IGCC_data_export <- df_IGCC[, c('Date', export)]
+        export <- export %>% str_sub(1, 2) %>% toupper
+        names(IGCC_data_export) <- c('Date', export)
+
+        IGCC_data_export <- IGCC_data_export%>% melt(id.vars='Date') %>% na.omit
+
+        return(IGCC_data_export)
+    })
+    IGCC_data_import <- reactive({
+        df_IGCC <- IGCC_data()
+        import <- names(df_IGCC)[grepl(names(df_IGCC), pattern='import_vol')]
+        IGCC_data_import <- df_IGCC[, c('Date', import)]
+        import <- import %>% str_sub(1, 2) %>% toupper
+        names(IGCC_data_import) <- c('Date', import)
+        IGCC_data_import[, import] <- -1. * IGCC_data_import[, import]
+        IGCC_data_import <- IGCC_data_import%>% melt(id.vars='Date') %>% na.omit
+        return(IGCC_data_import)
+    })
+    output$igcc_plot <- renderPlot({
+        ggplot() +
+            geom_bar(data=IGCC_data_import(),
+                     aes(x=Date,
+                         y=value,
+                         group=variable,
+                         fill=variable),
+                     width=15*60,
+                     color='black',
+                     stat='identity') +
+            geom_bar(data=IGCC_data_export(),
+                     aes(x=Date,
+                         y=value,
+                         group=variable,
+                         fill=variable),
+                     width=15*60,
+                     color='black',
+                     stat='identity') +
+            scale_fill_manual(values=coloring_IGCC) +
+            scale_x_datetime(limits=c(Sys.Date() %>% as.POSIXct %>% trunc('days') %>% as.POSIXct,
+                                      (Sys.Date() +1) %>% as.POSIXct) %>% trunc('days') %>% as.POSIXct,
+                             breaks=date_breaks('2 hours'),
+                             expand=c(0, 0),
+                             minor_breaks=date_breaks('1 hours'),
+                             labels=date_format("%H", tz='Europe/Amsterdam')) +
+            geom_hline(aes(yintercept=0), size=2) +
+            ylab('MW') +
+            xlab('Time') +
+            annotate("text",
+                     x = Sys.Date() %>% as.POSIXct,
+                     y = Inf,
+                     vjust = 1,
+                     hjust=0,
+                     label = "Exported"
+            ) +
+            annotate("text",
+                     x = Sys.Date() %>% as.POSIXct,
+                     y = -Inf,
+                     vjust=0,
+                     hjust=0,
+                     label="Imported"
+            ) + theme(legend.position = 'bottom') +
+            guides(fill = guide_legend(nrow=1))
+    })
 }

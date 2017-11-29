@@ -168,7 +168,12 @@ server <- function(input, output, session) {
     observeEvent({df_model_raster()}, {
         df_model_raster <- df_model_raster()
         leafletProxy('map') %>%
-            clearGroup('model') %>%
+            clearGroup('model')
+        if(df_model_raster %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
             addRasterImage(df_model_raster,

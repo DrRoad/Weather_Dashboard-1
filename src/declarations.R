@@ -28,7 +28,10 @@ conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Air pressure"="metoffice_air_pressure",
                                    "Radiation"="metoffice_radiation")
 
-
+conversion_list_KNMI_plot <<- list("Windspeed"="ff",
+                                   "Temperature"="ta",
+                                   "Air pressure"="pp",
+                                   "Radiation"="qg")
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
 Windparks <- Windparks_filename %>% read.csv %>% data.frame

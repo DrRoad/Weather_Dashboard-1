@@ -1,11 +1,11 @@
-import_data_sql <- function(max_hours_back = 5) {
+import_data_sql <- function(max_hours_back = 10, max_hours_forward=5) {
 
     # Min and Max datetime for the query
     minimal_datetime <- (Sys.time() %>%
                              trunc('hour') - max_hours_back * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
-    maximal_datetime <- Sys.time() %>%
-        trunc('hour') %>%
+    maximal_datetime <- (Sys.time() %>%
+                             trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
     # basically, give everything between min and max datetime
     stmt <- sprintf("SELECT * from weather_sources_view WHERE datetime >= '%s' AND datetime <= '%s'",

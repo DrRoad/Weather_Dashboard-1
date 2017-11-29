@@ -63,6 +63,9 @@ ui <- dashboardPage(title="Weather Dashboard",
                                 )
                             ),
                             HTML("<br/>"),
+                            style="padding: 0px;",
+                            actionButton('refresh_data',
+                                         "Refresh"),
                             fluidRow(
                                 column(7,
                                        offset=0,
@@ -122,9 +125,30 @@ ui <- dashboardPage(title="Weather Dashboard",
                             tabPanel('One',
                                      value=1,
                                      style="padding=0px;",
-                                     leafletOutput("map",
-                                                   height=850,
-                                                   width="100%")
+                                     fluidRow(
+                                         column(9,
+                                                offset=0,
+                                                style='padding: 0px;',
+                                                leafletOutput("map",
+                                                              height=850,
+                                                              width="100%")
+                                         ),
+                                         column(3,
+                                                offset=0,
+                                                style='padding: 0px;',
+                                                box(title='KNMI history',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    color='black',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('knmi_history_plot',
+                                                                   height="250")
+                                                    )
+                                                )
+                                         )
+                                     )
                             ),
                             tabPanel('Two',
                                      value=2,

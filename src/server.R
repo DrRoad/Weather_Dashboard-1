@@ -3,11 +3,14 @@ pacman::p_load(shiny,
                leaflet,
                raster,
                lubridate,
-               RMySQL)
+               RMySQL,
+               ggplot2)
 
 
 source("functions.R")
 source("declarations.R")
+
+rv <- reactiveValues(knmi_station_history = NULL)
 
 server <- function(input, output, session) {
     # auto invalidates ----
@@ -16,6 +19,8 @@ server <- function(input, output, session) {
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
         autoInvalidate_data_fetch_sql()
+        input$refresh_data
+
         df_raw_sql <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
             message='Importing data from DataHub',
@@ -36,7 +41,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw_sql()
+        df_raw <- df_raw()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print
@@ -288,7 +293,8 @@ server <- function(input, output, session) {
                        lng = Windparks$lon,
                        icon = icons_size,
                        popup=paste0(Windparks$Location, "<br>",
-                                    "capacity: ", Windparks$max_MW," MW<br>"),
+                                    "capacity: ", Windparks$max_MW," MW<br>",
+                                    plot(mtcars)),
                        group="eneco_windparks")
 
     })
@@ -316,9 +322,41 @@ server <- function(input, output, session) {
 
     })
 
+    observeEvent({input$map_marker_click}, {
+        print("Something clicked")
+        click <- input$map_marker_click
+        if(is.null(click) | click$group != 'KNMI_markers') {return()}
+
+        # Get the stationname from the current df_knmi
+        # And it should be in there, otherwise it cannot be shown/clicked
+        df_knmi <- df_knmi()
+        rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat & df_knmi$knmi_lon == click$lng, 'knmi_name']
+    })
+
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%
             strftime("%d %b %H:%M", tz='Europe/Amsterdam')
+    })
+    output$knmi_history_plot <- renderPlot({
+        if(is.null(rv$knmi_station_history)) {
+            # No plot necessary
+            return()
+        }
+        stmt <- sprintf("SELECT * FROM knmi_data_source where stationname = '%s' and datetime >= '%s' order by datetime",
+                        rv$knmi_station_history,
+                        Sys.time() %>%
+                            with_tz('Europe/Amsterdam') %>%
+                            trunc('days') %>%
+                            with_tz('UTC') %>%
+                            strftime('%Y-%m-%d %H:%M:%S')
+                            )
+        df1 <- run.query(stmt)$result
+        # Make it datetime, but keep UTC
+        df1$datetime <- df1$datetime %>% as.POSIXct()
+        ggplot
+        p <- ggplot(df1)
+        p <- p =geom_line(aes_string('datetime', conversion_list_KNMI_plot[[input$observable]]))
+        return(p)
     })
 }

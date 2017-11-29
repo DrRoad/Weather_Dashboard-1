@@ -10,10 +10,22 @@ source("functions.R")
 source("declarations.R")
 
 server <- function(input, output, session) {
-
+    # auto invalidates ----
+    autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
-        df_raw_sql <- import_data_sql()
+        # To update every x minutes, there is this autoInvalidate
+        autoInvalidate_data_fetch_sql()
+        df_raw_sql <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Importing data from DataHub',
+            detail='Love and Kisses, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                import_data_sql()
+            })
         return(df_raw_sql)
     })
     df_raw <- reactive({
@@ -56,7 +68,7 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing");return()}
+        if(nrow(df)==0) {print("Nothing");return(data.frame())}
         observable_gfs <- conversion_list_GFS[[input$observable]]
         df_model_raster <- raster_maker(df, observable_gfs)
         return(df_model_raster)
@@ -302,6 +314,6 @@ server <- function(input, output, session) {
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%
-            strftime("%d %b %H:%M")
+            strftime("%d %b %H:%M", tz='Europe/Amsterdam')
     })
 }

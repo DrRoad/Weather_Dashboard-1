@@ -3,13 +3,16 @@ library(pacman)
 pacman::p_load(shiny,
                leaflet,
                shinydashboard,
-               shinyWidgets)
+               shinyWidgets,
+               lubridate)
 
 
 
 ui <- dashboardPage(title="Weather Dashboard",
+
                     dashboardHeader(title= "Weather Dashboard 2.0"),
                     dashboardSidebar(
+                        includeCSS("styles.css"),
                         conditionalPanel(
                             condition="input.conditionedPanels==1",
                             fluidRow(
@@ -67,12 +70,12 @@ ui <- dashboardPage(title="Weather Dashboard",
                                        div(style="height: 33px;",
                                            dateInput("date_input",
                                                      NULL,
-                                                     value="2017-11-24")
+                                                     value=Sys.Date())
                                        ),
                                        div(style="height: 33px;",
                                            numericInput("hour_input",
                                                         NULL,
-                                                        value=7)
+                                                        value=Sys.time() %>% hour)
                                        )
                                 ),
                                 column(5,
@@ -81,7 +84,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                        div(style="height: 51px;",
                                            materialSwitch('current_time',
                                                           'Live?',
-                                                          value=FALSE,
+                                                          value=TRUE,
                                                           status='success')
                                        ),
                                        div(style="height: 20px;",

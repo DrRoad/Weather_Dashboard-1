@@ -61,7 +61,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                             ),
                             HTML("<br/>"),
                             fluidRow(
-                                column(8,
+                                column(7,
                                        offset=0,
                                        style="padding:6px;",
                                        div(style="height: 33px;",
@@ -75,13 +75,19 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                         value=7)
                                        )
                                 ),
-                                column(4,
+                                column(5,
                                        offset=0,
                                        style="padding:10px;",
-                                       materialSwitch('current_time',
-                                                      'Live?',
-                                                      value=FALSE,
-                                                      status='success')
+                                       div(style="height: 51px;",
+                                           materialSwitch('current_time',
+                                                          'Live?',
+                                                          value=FALSE,
+                                                          status='success')
+                                       ),
+                                       div(style="height: 20px;",
+                                           textOutput("compared_time",
+                                                      )
+                                       )
                                 )
                             ),
                             pickerInput('observable',
@@ -112,7 +118,6 @@ ui <- dashboardPage(title="Weather Dashboard",
                             id = "conditionedPanels",
                             tabPanel('One',
                                      value=1,
-                                     # DT::dataTableOutput('dt1'),
                                      style="padding=0px;",
                                      leafletOutput("map",
                                                    height=850,

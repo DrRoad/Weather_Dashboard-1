@@ -298,4 +298,10 @@ server <- function(input, output, session) {
                        group="external_windparks")
 
     })
+
+    # Complementary stuff ----
+    output$compared_time <- renderText({
+        compared_time() %>%
+            strftime("%d %b %H:%M")
+    })
 }

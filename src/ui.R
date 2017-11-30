@@ -99,12 +99,12 @@ ui <- dashboardPage(title="Weather Dashboard",
                                         'Observable',
                                         choices=c('Temperature',
                                                   'Windspeed',
-                                                  'Air pressure'),
-                                                  #'Radiation'),
+                                                  'Air pressure',
+                                                  'Radiation'),
                                         choicesOpt = list(icon = c("glyphicon glyphicon-copyright-mark",
                                                                    "glyphicon-flag",
-                                                                   "glyphicon glyphicon-dashboard")),
-                                                                   #"glyphicon-certificate")),
+                                                                   "glyphicon glyphicon-dashboard",
+                                                                   "glyphicon-certificate")),
                                         selected='Temperature')
 
 
@@ -133,12 +133,24 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                               width="100%")
                                          ),
                                          column(3,
-                                                align='center',
                                                 offset=0,
                                                 style='padding: 0px;',
+                                                box(title='IGCC',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    color='lime',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('igcc_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                ),
                                                 box(title='KNMI history',
                                                     solidHeader=FALSE,
                                                     collapsible=TRUE,
+                                                    collapsed=TRUE,
                                                     color='black',
                                                     width=12,
                                                     heigth=300,
@@ -148,14 +160,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    width="90%")
                                                     )
                                                 ),
-                                                box(title='IGCC',
+                                                box(title='MetOffice history',
                                                     solidHeader=FALSE,
                                                     collapsible=TRUE,
-                                                    color='lime',
+                                                    collapsed=TRUE,
+                                                    color='orange',
                                                     width=12,
                                                     heigth=300,
                                                     fluidRow(
-                                                        plotOutput('igcc_plot',
+                                                        plotOutput('metoffice_history_plot',
                                                                    height="250",
                                                                    width="90%")
                                                     )

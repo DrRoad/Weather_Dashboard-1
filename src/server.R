@@ -12,7 +12,8 @@ pacman::p_load(shiny,
 source("functions.R")
 source("declarations.R")
 
-rv <- reactiveValues(knmi_station_history = NULL)
+rv <- reactiveValues(knmi_station_history = NULL,
+                     metoffice_station_history=NULL)
 
 server <- function(input, output, session) {
     # auto invalidates ----
@@ -329,12 +330,21 @@ server <- function(input, output, session) {
     observeEvent({input$map_marker_click}, {
         print("Something clicked")
         click <- input$map_marker_click
-        if(is.null(click) | click$group != 'KNMI_markers') {return()}
+        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers')
+        if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
 
-        # Get the stationname from the current df_knmi
-        # And it should be in there, otherwise it cannot be shown/clicked
-        df_knmi <- df_knmi()
-        rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat & df_knmi$knmi_lon == click$lng, 'knmi_name']
+        if (click$group == 'KNMI_markers') {
+            # Get the stationname from the current df_knmi
+            # And it should be in there, otherwise it cannot be shown/clicked
+            df_knmi <- df_knmi()
+            rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat &
+                                                    df_knmi$knmi_lon == click$lng, 'knmi_name']
+        } else if (click$group == 'KNMI_markers') {
+            # Same as above, but then for metoffice
+            df_metoffice <- df_metoffice()
+            rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
+                                                              df_metoffice$metoffice_lon == click$lng, 'metoffice_name']
+        }
     })
 
     # Complementary stuff ----
@@ -388,6 +398,53 @@ server <- function(input, output, session) {
                                       y=conversion_list_GFS[[input$observable]]),
                            color='black')
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        return(p)
+    })
+    output$metoffice_history_plot <- renderPlot({
+        if(is.null(rv$metoffice_station_history)) {
+            # No plot necessary
+            return()
+        }
+        # Datetime of begin/end of the day
+        datetime_begin <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            trunc('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        datetime_end <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            ceiling_date('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        # Get all rows for the specific metoffice station since beginning of this day
+        stmt <- sprintf("SELECT * FROM metoffice_data_source WHERE name = '%s' AND datetime >= '%s' ORDER BY datetime",
+                        rv$metoffice_station_history,
+                        datetime_begin
+        )
+        df_metoffice_history_plot <- run.query(stmt)$result
+        # Make it datetime, and Europe/Amsterdam
+        df_metoffice_history_plot$datetime <- df_metoffice_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
+        p <- ggplot()
+        p <- p + geom_line(data=df_metoffice_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_metoffice_plot[[input$observable]]),
+                           color='red')
+        # Determine the lat/lon to join metoffice on with GFS
+        metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.25, 0) * 0.25
+        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.25, 0) * 0.25
+        # Construct the stmt by filling in the blanks in the base stmt
+        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
+                        datetime_begin,
+                        datetime_end,
+                        metoffice_lat,
+                        metoffice_lon)
+        df_gfs_history_plot <- run.query(stmt)$result
+        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        p <- p + geom_line(data=df_gfs_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black')
+        p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
 

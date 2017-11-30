@@ -53,7 +53,7 @@ coloring_IGCC <- c("DE" = "white",
                    "CZ" = "khaki")
 
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
-                            gfs.temperature_level_0 - 273.15 as gfs_temp,
+                            gfs.2_metre_temperature_level_2 as gfs_temp,
                             gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
                             gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
                             gfs.surface_pressure_level_0 as gfs_air_pressure

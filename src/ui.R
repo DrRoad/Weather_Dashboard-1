@@ -99,12 +99,12 @@ ui <- dashboardPage(title="Weather Dashboard",
                                         'Observable',
                                         choices=c('Temperature',
                                                   'Windspeed',
-                                                  'Air pressure',
-                                                  'Radiation'),
+                                                  'Air pressure'),
+                                                  #'Radiation'),
                                         choicesOpt = list(icon = c("glyphicon glyphicon-copyright-mark",
                                                                    "glyphicon-flag",
-                                                                   "glyphicon glyphicon-dashboard",
-                                                                   "glyphicon-certificate")),
+                                                                   "glyphicon glyphicon-dashboard")),
+                                                                   #"glyphicon-certificate")),
                                         selected='Temperature')
 
 

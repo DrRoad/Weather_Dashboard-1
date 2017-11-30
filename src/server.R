@@ -46,7 +46,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw()
+        df_raw <- df_raw_sql()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print

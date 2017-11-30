@@ -5,6 +5,7 @@ pacman::p_load(shiny,
                lubridate,
                RMySQL,
                ggplot2,
+               scales,
                stringr,
                reshape2)
 
@@ -45,7 +46,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw_sql()
+        df_raw <- df_raw()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print
@@ -328,18 +329,17 @@ server <- function(input, output, session) {
     })
 
     observeEvent({input$map_marker_click}, {
-        print("Something clicked")
         click <- input$map_marker_click
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers')
         if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
-
         if (click$group == 'KNMI_markers') {
             # Get the stationname from the current df_knmi
             # And it should be in there, otherwise it cannot be shown/clicked
             df_knmi <- df_knmi()
+            # Change it in entire scope, so the next observeEvent is triggered by the change you do here
             rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat &
                                                     df_knmi$knmi_lon == click$lng, 'knmi_name']
-        } else if (click$group == 'KNMI_markers') {
+        } else if (click$group == 'MetOffice_markers') {
             # Same as above, but then for metoffice
             df_metoffice <- df_metoffice()
             rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
@@ -417,9 +417,10 @@ server <- function(input, output, session) {
             with_tz('UTC') %>%
             strftime('%Y-%m-%d %H:%M:%S')
         # Get all rows for the specific metoffice station since beginning of this day
-        stmt <- sprintf("SELECT * FROM metoffice_data_source WHERE name = '%s' AND datetime >= '%s' ORDER BY datetime",
+        stmt <- sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
                         rv$metoffice_station_history,
-                        datetime_begin
+                        datetime_begin,
+                        datetime_end
         )
         df_metoffice_history_plot <- run.query(stmt)$result
         # Make it datetime, and Europe/Amsterdam

@@ -76,3 +76,12 @@ FROM mkonline_data_source mk1 INNER JOIN
     WHERE Date >= '%s'
     GROUP BY Date
 ) mk2 on mk1.Date = mk2.Date AND mk1.processed_time = mk2.processed_time ORDER BY Date"
+
+stmt_metoffice_history = "SELECT mo1.*
+FROM metoffice_data_source mo1 INNER JOIN
+(
+    SELECT datetime, MAX(processed_time) as processed_time, name
+    FROM metoffice_data_source
+    WHERE name = '%s' AND datetime >= '%s' AND datetime <= '%s'
+    GROUP BY datetime
+) mo2 on mo1.datetime = mo2.datetime AND mo1.processed_time = mo2.processed_time and mo1.name = mo2.name ORDER BY datetime"

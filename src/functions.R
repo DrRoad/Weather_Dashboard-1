@@ -104,11 +104,11 @@ get_gfs_history <- function(lat, lon, datetimes) {
 
 get_gfs_history_apx <- function(lat, lon, datetimes) {
     stmt <- sprintf(stmt_gfs_history_apx %>% strwrap(width=10000, simplify=TRUE),
-                    datetimes$datetime_apx,
                     datetimes$datetime_begin,
                     datetimes$datetime_end,
                     lat,
-                    lon)
+                    lon,
+                    datetimes$datetime_apx)
     df_gfs_history_plot_apx <- run.query(stmt)$result
     df_gfs_history_plot_apx$datetime <- df_gfs_history_plot_apx$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
     return(df_gfs_history_plot_apx)

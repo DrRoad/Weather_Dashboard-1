@@ -75,14 +75,14 @@ stmt_gfs_history_apx <- "SELECT datetime,
                                 surface_pressure_level_0 as gfs_air_pressure
                          FROM gfs_data_source
                          WHERE
-                             model_date = '%s' AND
-                             model_run = 6 AND
                              datetime >= '%s' AND
                              datetime < '%s' AND
-                             hours_ahead >= 17 AND -- In summertime, 6UTC is 7CET, meaning
+                             hours_ahead >= 19 AND
                              hours_ahead <= 43 AND
                              lat = %.2f AND
-                             lon = %.2f
+                             lon = %.2f AND
+                             model_date = '%s' AND
+                             model_run = 6
                          ORDER BY datetime"
 
 stmt_igcc <- "SELECT mk1.*

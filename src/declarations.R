@@ -83,8 +83,8 @@ stmt_gfs_history_apx <- "SELECT datetime,
                          WHERE
                              datetime >= '%s' AND
                              datetime < '%s' AND
-                             hours_ahead >= 19 AND
-                             hours_ahead <= 43 AND
+                             hours_ahead >= 17 AND
+                             hours_ahead <= 41 AND
                              lat = %.2f AND
                              lon = %.2f AND
                              model_date = '%s' AND

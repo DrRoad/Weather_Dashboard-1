@@ -60,6 +60,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 value=FALSE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
+                                ),
+                                div(
+                                    style='height: 25px;',
+                                    switchInput('wind_direction',
+                                                label='Direction',
+                                                size='small',
+                                                value=TRUE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
                                 )
                             ),
                             HTML("<br/>"),

@@ -46,6 +46,11 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
 
+# Wind direction icons
+directions <- seq(0, 360, 22.5) %>% round(0)
+wind_directions_location <- c("../data/arrows/arrow_icon_%03d.png" %>% sprintf(directions))
+names(wind_directions_location) <- directions
+
 coloring_IGCC <- c("DE" = "white",
                    "NL" = "orange",
                    "BE" = "red",
@@ -55,6 +60,7 @@ coloring_IGCC <- c("DE" = "white",
                    "CH" = "black",
                    "CZ" = "khaki")
 
+# Query statements ----
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
                             gfs.2_metre_temperature_level_2 as gfs_temp,
                             gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,

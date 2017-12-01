@@ -7,7 +7,8 @@ pacman::p_load(shiny,
                ggplot2,
                scales,
                stringr,
-               reshape2)
+               reshape2,
+               magrittr)
 
 
 source("functions.R")
@@ -327,6 +328,32 @@ server <- function(input, output, session) {
                                     "Owner: ", external_windparks$OWNER, "<br>",
                                     "capacity: ", external_windparks$max_MW," MW<br>"),
                        group="external_windparks")
+
+    })
+    observeEvent({input$wind_direction}, {
+        leafletProxy('map') %>%
+            clearGroup('wind_direction')
+        if (!input$wind_direction) {
+            # Done here!
+            return()
+        }
+        df <- df()
+        df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
+        icon <- icons(wind_directions_location[df_wind$gfs_wind_direction %>%
+                                                   divide_by(22.5) %>%
+                                                   round(0) %>%
+                                                   multiply_by(22.5) %>%
+                                                   round(0) %% 360 %>%
+                                                   as.character],
+                      iconHeight=30,
+                      iconWidth=30)
+        leafletProxy('map') %>%
+            addMarkers(lng=df_wind$lon,
+                       lat=df_wind$lat,
+                       icon=icon,
+                       popup=NULL,
+                       group='wind_direction')
+
 
     })
 

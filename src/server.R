@@ -361,20 +361,11 @@ server <- function(input, output, session) {
             return()
         }
         # Datetime of begin/end of the day
-        datetime_begin <- Sys.time() %>%
-            with_tz('Europe/Amsterdam') %>%
-            trunc('days') %>%
-            with_tz('UTC') %>%
-            strftime('%Y-%m-%d %H:%M:%S')
-        datetime_end <- Sys.time() %>%
-            with_tz('Europe/Amsterdam') %>%
-            ceiling_date('days') %>%
-            with_tz('UTC') %>%
-            strftime('%Y-%m-%d %H:%M:%S')
+        datetimes <- get_datetimes_history()
         # Get all rows for the specific KNMI station since beginning of this day
         stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s' ORDER BY datetime",
                         rv$knmi_station_history,
-                        datetime_begin
+                        datetimes$datetime_begin
         )
         df_knmi_history_plot <- run.query(stmt)$result
         # Make it datetime, and Europe/Amsterdam
@@ -387,18 +378,17 @@ server <- function(input, output, session) {
         # Determine the lat/lon to join KNMI on with GFS
         knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.25, 0) * 0.25
         knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        # Construct the stmt by filling in the blanks in the base stmt
-        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
-                        datetime_begin,
-                        datetime_end,
-                        knmi_lat,
-                        knmi_lon)
-        df_gfs_history_plot <- run.query(stmt)$result
-        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        df_gfs_history_plot <- get_gfs_history(knmi_lat, knmi_lon, datetimes)
         p <- p + geom_line(data=df_gfs_history_plot,
                            aes_string(x='datetime',
                                       y=conversion_list_GFS[[input$observable]]),
                            color='black')
+        df_gfs_history_plot_apx <- get_gfs_history_apx(knmi_lat, knmi_lon, datetimes)
+        p <- p + geom_line(data=df_gfs_history_plot_apx,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black',
+                           linetype='dashed')
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
@@ -408,21 +398,12 @@ server <- function(input, output, session) {
             return()
         }
         # Datetime of begin/end of the day
-        datetime_begin <- Sys.time() %>%
-            with_tz('Europe/Amsterdam') %>%
-            trunc('days') %>%
-            with_tz('UTC') %>%
-            strftime('%Y-%m-%d %H:%M:%S')
-        datetime_end <- Sys.time() %>%
-            with_tz('Europe/Amsterdam') %>%
-            ceiling_date('days') %>%
-            with_tz('UTC') %>%
-            strftime('%Y-%m-%d %H:%M:%S')
+        datetimes <- get_datetimes_history()
         # Get all rows for the specific metoffice station since beginning of this day
         stmt <- sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
                         rv$metoffice_station_history,
-                        datetime_begin,
-                        datetime_end
+                        datetimes$datetime_begin,
+                        datetimes$datetime_end
         )
         df_metoffice_history_plot <- run.query(stmt)$result
         # Make it datetime, and Europe/Amsterdam
@@ -435,18 +416,18 @@ server <- function(input, output, session) {
         # Determine the lat/lon to join metoffice on with GFS
         metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.25, 0) * 0.25
         metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        # Construct the stmt by filling in the blanks in the base stmt
-        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
-                        datetime_begin,
-                        datetime_end,
-                        metoffice_lat,
-                        metoffice_lon)
-        df_gfs_history_plot <- run.query(stmt)$result
-        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        df_gfs_history_plot <- get_gfs_history(metoffice_lat, metoffice_lon, datetimes)
         p <- p + geom_line(data=df_gfs_history_plot,
                            aes_string(x='datetime',
                                       y=conversion_list_GFS[[input$observable]]),
                            color='black')
+        df_gfs_history_plot_apx <- get_gfs_history_apx(metoffice_lat, metoffice_lon, datetimes)
+        p <- p + geom_line(data=df_gfs_history_plot_apx,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black',
+                           linetype='dashed')
+
         p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })

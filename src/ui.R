@@ -30,7 +30,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                     switchInput('owm_switch',
                                                 label='OWM',
                                                 size='small',
-                                                value=TRUE,
+                                                value=FALSE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
                                 ),

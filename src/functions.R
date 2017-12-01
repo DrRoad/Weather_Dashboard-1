@@ -70,3 +70,46 @@ get_IGCC_data <- function() {
     df_IGCC$Date <- df_IGCC$Date + 7.5 * 60
     return(df_IGCC)
 }
+
+get_datetimes_history <- function() {
+    # Datetime of begin/end of the day
+    datetime_begin <- Sys.time() %>%
+        with_tz('Europe/Amsterdam') %>%
+        trunc('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+    datetime_end <- Sys.time() %>%
+        with_tz('Europe/Amsterdam') %>%
+        ceiling_date('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+    datetime_apx <- (Sys.time() %>%
+        trunc('days') -
+        18*60*60) %>%
+        strftime('%Y-%m-%d')
+    return(list(datetime_begin=datetime_begin, datetime_end=datetime_end, datetime_apx=datetime_apx))
+}
+
+get_gfs_history <- function(lat, lon, datetimes) {
+    # Construct the stmt by filling in the blanks in the base stmt
+    stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
+                    datetimes$datetime_begin,
+                    datetimes$datetime_end,
+                    lat,
+                    lon)
+    df_gfs_history_plot <- run.query(stmt)$result
+    df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+    return(df_gfs_history_plot)
+}
+
+get_gfs_history_apx <- function(lat, lon, datetimes) {
+    stmt <- sprintf(stmt_gfs_history_apx %>% strwrap(width=10000, simplify=TRUE),
+                    datetimes$datetime_apx,
+                    datetimes$datetime_begin,
+                    datetimes$datetime_end,
+                    lat,
+                    lon)
+    df_gfs_history_plot_apx <- run.query(stmt)$result
+    df_gfs_history_plot_apx$datetime <- df_gfs_history_plot_apx$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+    return(df_gfs_history_plot_apx)
+}

@@ -68,6 +68,23 @@ FROM gfs_data_source gfs INNER JOIN
     GROUP BY datetime, lat, lon
 ) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"
 
+stmt_gfs_history_apx <- "SELECT datetime,
+                                2_metre_temperature_level_2 as gfs_temp,
+                                10_metre_wind_speed_level_10 as gfs_wind_speed,
+                                downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+                                surface_pressure_level_0 as gfs_air_pressure
+                         FROM gfs_data_source
+                         WHERE
+                             model_date = '%s' AND
+                             model_run = 6 AND
+                             datetime >= '%s' AND
+                             datetime < '%s' AND
+                             hours_ahead >= 17 AND -- In summertime, 6UTC is 7CET, meaning
+                             hours_ahead <= 43 AND
+                             lat = %.2f AND
+                             lon = %.2f
+                         ORDER BY datetime"
+
 stmt_igcc <- "SELECT mk1.*
 FROM mkonline_data_source mk1 INNER JOIN
 (

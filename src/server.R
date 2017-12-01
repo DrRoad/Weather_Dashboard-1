@@ -17,7 +17,7 @@ rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL)
 
 server <- function(input, output, session) {
-    # auto invalidates ----
+    # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
     # Dataframes build up ----
@@ -57,6 +57,8 @@ server <- function(input, output, session) {
         return(df)
     })
     compared_time <- reactive({
+        # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
+        autoInvalidate_data_fetch_sql()
         # Determine the interesting time we want to show. Is used to filter df_raw into df
         # Depending on the switch, get the current time or the tietime the trader wants
         if(input$current_time) {

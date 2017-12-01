@@ -27,8 +27,14 @@ conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Temperature"="metoffice_temp",
                                    "Air pressure"="metoffice_air_pressure",
                                    "Radiation"="metoffice_radiation")
-
-
+conversion_list_KNMI_plot <<- list("Windspeed"="ff",
+                                   "Temperature"="ta",
+                                   "Air pressure"="pp",
+                                   "Radiation"="qg")
+conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
+                                        "Temperature"="temperature",
+                                        "Air pressure"="pressure",
+                                        "Radiation"="pressure") # Not available
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
 Windparks <- Windparks_filename %>% read.csv %>% data.frame
@@ -40,3 +46,42 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
 
+coloring_IGCC <- c("DE" = "white",
+                   "NL" = "orange",
+                   "BE" = "red",
+                   "FR" = "blue",
+                   "DK" = "green",
+                   "AT" = "violet",
+                   "CH" = "black",
+                   "CZ" = "khaki")
+
+stmt_gfs_history <- "SELECT gfs.datetime as datetime,
+                            gfs.2_metre_temperature_level_2 as gfs_temp,
+                            gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
+                            gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+                            gfs.surface_pressure_level_0 as gfs_air_pressure
+FROM gfs_data_source gfs INNER JOIN
+(
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM gfs_data_source
+    WHERE datetime >= '%s' AND datetime < '%s' AND lat = %.2f AND lon = %.2f
+    GROUP BY datetime, lat, lon
+) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"
+
+stmt_igcc <- "SELECT mk1.*
+FROM mkonline_data_source mk1 INNER JOIN
+(
+    SELECT Date, MAX(processed_time) as processed_time
+    FROM mkonline_data_source
+    WHERE Date >= '%s'
+    GROUP BY Date
+) mk2 on mk1.Date = mk2.Date AND mk1.processed_time = mk2.processed_time ORDER BY Date"
+
+stmt_metoffice_history = "SELECT mo1.*
+FROM metoffice_data_source mo1 INNER JOIN
+(
+    SELECT datetime, MAX(processed_time) as processed_time, name
+    FROM metoffice_data_source
+    WHERE name = '%s' AND datetime >= '%s' AND datetime <= '%s'
+    GROUP BY datetime
+) mo2 on mo1.datetime = mo2.datetime AND mo1.processed_time = mo2.processed_time and mo1.name = mo2.name ORDER BY datetime"

@@ -3,14 +3,16 @@ library(pacman)
 pacman::p_load(shiny,
                leaflet,
                shinydashboard,
-               DT,
-               shinyWidgets)
+               shinyWidgets,
+               lubridate)
 
 
 
 ui <- dashboardPage(title="Weather Dashboard",
+
                     dashboardHeader(title= "Weather Dashboard 2.0"),
                     dashboardSidebar(
+                        includeCSS("styles.css"),
                         conditionalPanel(
                             condition="input.conditionedPanels==1",
                             fluidRow(
@@ -61,28 +63,36 @@ ui <- dashboardPage(title="Weather Dashboard",
                                 )
                             ),
                             HTML("<br/>"),
+                            style="padding: 0px;",
+                            actionButton('refresh_data',
+                                         "Refresh"),
                             fluidRow(
-                                column(8,
+                                column(7,
                                        offset=0,
                                        style="padding:6px;",
                                        div(style="height: 33px;",
                                            dateInput("date_input",
                                                      NULL,
-                                                     value="2017-11-24")
+                                                     value=Sys.Date())
                                        ),
                                        div(style="height: 33px;",
                                            numericInput("hour_input",
                                                         NULL,
-                                                        value=7)
+                                                        value=Sys.time() %>% with_tz('Europe/Amsterdam') %>% hour)
                                        )
                                 ),
-                                column(4,
+                                column(5,
                                        offset=0,
                                        style="padding:10px;",
-                                       materialSwitch('current_time',
-                                                      'Live?',
-                                                      value=FALSE,
-                                                      status='success')
+                                       div(style="height: 51px;",
+                                           materialSwitch('current_time',
+                                                          'Live?',
+                                                          value=TRUE,
+                                                          status='success')
+                                       ),
+                                       div(style="height: 20px;",
+                                           textOutput("compared_time")
+                                       )
                                 )
                             ),
                             pickerInput('observable',
@@ -113,11 +123,59 @@ ui <- dashboardPage(title="Weather Dashboard",
                             id = "conditionedPanels",
                             tabPanel('One',
                                      value=1,
-                                     # DT::dataTableOutput('dt1'),
                                      style="padding=0px;",
-                                     leafletOutput("map",
-                                                   height=850,
-                                                   width="100%")
+                                     fluidRow(
+                                         column(9,
+                                                offset=0,
+                                                style='padding: 0px;',
+                                                leafletOutput("map",
+                                                              height=850,
+                                                              width="100%")
+                                         ),
+                                         column(3,
+                                                offset=0,
+                                                style='padding: 0px;',
+                                                align='center',
+                                                box(title='IGCC',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    color='lime',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('igcc_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                ),
+                                                box(title='KNMI history',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    collapsed=TRUE,
+                                                    color='black',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('knmi_history_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                ),
+                                                box(title='MetOffice history',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    collapsed=TRUE,
+                                                    color='orange',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('metoffice_history_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                )
+                                         )
+                                     )
                             ),
                             tabPanel('Two',
                                      value=2,

@@ -1,17 +1,43 @@
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(shiny,
                leaflet,
-               DT,
                raster,
-               lubridate)
+               lubridate,
+               RMySQL,
+               ggplot2,
+               scales,
+               stringr,
+               reshape2)
 
 
 source("functions.R")
 source("declarations.R")
 
-server <- function(input, output, session) {
+rv <- reactiveValues(knmi_station_history = NULL,
+                     metoffice_station_history=NULL)
 
+server <- function(input, output, session) {
+    # autoInvalidates ----
+    autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
+    autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
     # Dataframes build up ----
+    df_raw_sql <- reactive({
+        # To update every x minutes, there is this autoInvalidate
+        autoInvalidate_data_fetch_sql()
+        input$refresh_data
+
+        df_raw_sql <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Importing data from DataHub',
+            detail='Love and Kisses, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                import_data_sql()
+            })
+        return(df_raw_sql)
+    })
     df_raw <- reactive({
         # Import the raw data
         df_raw <- import_data()
@@ -20,7 +46,7 @@ server <- function(input, output, session) {
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
-        df_raw <- df_raw()
+        df_raw <- df_raw_sql()
         compared_time <- compared_time()
 
         # df_raw %>% head %>% print
@@ -31,11 +57,14 @@ server <- function(input, output, session) {
         return(df)
     })
     compared_time <- reactive({
+        # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
+        autoInvalidate_data_fetch_sql()
         # Determine the interesting time we want to show. Is used to filter df_raw into df
         # Depending on the switch, get the current time or the tietime the trader wants
         if(input$current_time) {
             # Get the current time, truncate it to hours so that we have the current hour
             compared_time <- Sys.time() %>%
+                with_tz('UTC') %>%
                 trunc('hour')
         } else {
             # Get time wanted by user by combining date and time.
@@ -52,7 +81,7 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing");return()}
+        if(nrow(df)==0) {print("Nothing");return(data.frame())}
         observable_gfs <- conversion_list_GFS[[input$observable]]
         df_model_raster <- raster_maker(df, observable_gfs)
         return(df_model_raster)
@@ -152,7 +181,12 @@ server <- function(input, output, session) {
     observeEvent({df_model_raster()}, {
         df_model_raster <- df_model_raster()
         leafletProxy('map') %>%
-            clearGroup('model') %>%
+            clearGroup('model')
+        if(df_model_raster %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
             addRasterImage(df_model_raster,
@@ -267,7 +301,8 @@ server <- function(input, output, session) {
                        lng = Windparks$lon,
                        icon = icons_size,
                        popup=paste0(Windparks$Location, "<br>",
-                                    "capacity: ", Windparks$max_MW," MW<br>"),
+                                    "capacity: ", Windparks$max_MW," MW<br>",
+                                    plot(mtcars)),
                        group="eneco_windparks")
 
     })
@@ -293,5 +328,207 @@ server <- function(input, output, session) {
                                     "capacity: ", external_windparks$max_MW," MW<br>"),
                        group="external_windparks")
 
+    })
+
+    observeEvent({input$map_marker_click}, {
+        click <- input$map_marker_click
+        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers')
+        if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
+        if (click$group == 'KNMI_markers') {
+            # Get the stationname from the current df_knmi
+            # And it should be in there, otherwise it cannot be shown/clicked
+            df_knmi <- df_knmi()
+            # Change it in entire scope, so the next observeEvent is triggered by the change you do here
+            rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat &
+                                                    df_knmi$knmi_lon == click$lng, 'knmi_name']
+        } else if (click$group == 'MetOffice_markers') {
+            # Same as above, but then for metoffice
+            df_metoffice <- df_metoffice()
+            rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
+                                                              df_metoffice$metoffice_lon == click$lng, 'metoffice_name']
+        }
+    })
+
+    # Complementary stuff ----
+    output$compared_time <- renderText({
+        compared_time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            strftime("%d %b %H:%M", tz='Europe/Amsterdam')
+    })
+    output$knmi_history_plot <- renderPlot({
+        if(is.null(rv$knmi_station_history)) {
+            # No plot necessary
+            return()
+        }
+        # Datetime of begin/end of the day
+        datetime_begin <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            trunc('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        datetime_end <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            ceiling_date('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        # Get all rows for the specific KNMI station since beginning of this day
+        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s' ORDER BY datetime",
+                        rv$knmi_station_history,
+                        datetime_begin
+        )
+        df_knmi_history_plot <- run.query(stmt)$result
+        # Make it datetime, and Europe/Amsterdam
+        df_knmi_history_plot$datetime <- df_knmi_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
+        p <- ggplot()
+        p <- p + geom_line(data=df_knmi_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_KNMI_plot[[input$observable]]),
+                           color='red')
+        # Determine the lat/lon to join KNMI on with GFS
+        knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.25, 0) * 0.25
+        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.25, 0) * 0.25
+        # Construct the stmt by filling in the blanks in the base stmt
+        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
+                        datetime_begin,
+                        datetime_end,
+                        knmi_lat,
+                        knmi_lon)
+        df_gfs_history_plot <- run.query(stmt)$result
+        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        p <- p + geom_line(data=df_gfs_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black')
+        p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        return(p)
+    })
+    output$metoffice_history_plot <- renderPlot({
+        if(is.null(rv$metoffice_station_history)) {
+            # No plot necessary
+            return()
+        }
+        # Datetime of begin/end of the day
+        datetime_begin <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            trunc('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        datetime_end <- Sys.time() %>%
+            with_tz('Europe/Amsterdam') %>%
+            ceiling_date('days') %>%
+            with_tz('UTC') %>%
+            strftime('%Y-%m-%d %H:%M:%S')
+        # Get all rows for the specific metoffice station since beginning of this day
+        stmt <- sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
+                        rv$metoffice_station_history,
+                        datetime_begin,
+                        datetime_end
+        )
+        df_metoffice_history_plot <- run.query(stmt)$result
+        # Make it datetime, and Europe/Amsterdam
+        df_metoffice_history_plot$datetime <- df_metoffice_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
+        p <- ggplot()
+        p <- p + geom_line(data=df_metoffice_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_metoffice_plot[[input$observable]]),
+                           color='red')
+        # Determine the lat/lon to join metoffice on with GFS
+        metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.25, 0) * 0.25
+        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.25, 0) * 0.25
+        # Construct the stmt by filling in the blanks in the base stmt
+        stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),
+                        datetime_begin,
+                        datetime_end,
+                        metoffice_lat,
+                        metoffice_lon)
+        df_gfs_history_plot <- run.query(stmt)$result
+        df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+        p <- p + geom_line(data=df_gfs_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black')
+        p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        return(p)
+    })
+
+    # IGCC ----
+    IGCC_data <- reactive({
+        autoInvalidate_IGCC()
+        df_IGCC <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Fetching IGCC data',
+            detail='Always and truly, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                get_IGCC_data()
+            })
+        return(df_IGCC)
+    })
+    IGCC_data_export <- reactive({
+        df_IGCC <- IGCC_data()
+        export <- names(df_IGCC)[grepl(names(df_IGCC), pattern='export_vol')]
+        IGCC_data_export <- df_IGCC[, c('Date', export)]
+        export <- export %>% str_sub(1, 2) %>% toupper
+        names(IGCC_data_export) <- c('Date', export)
+
+        IGCC_data_export <- IGCC_data_export%>% melt(id.vars='Date') %>% na.omit
+
+        return(IGCC_data_export)
+    })
+    IGCC_data_import <- reactive({
+        df_IGCC <- IGCC_data()
+        import <- names(df_IGCC)[grepl(names(df_IGCC), pattern='import_vol')]
+        IGCC_data_import <- df_IGCC[, c('Date', import)]
+        import <- import %>% str_sub(1, 2) %>% toupper
+        names(IGCC_data_import) <- c('Date', import)
+        IGCC_data_import[, import] <- -1. * IGCC_data_import[, import]
+        IGCC_data_import <- IGCC_data_import%>% melt(id.vars='Date') %>% na.omit
+        return(IGCC_data_import)
+    })
+    output$igcc_plot <- renderPlot({
+        ggplot() +
+            geom_bar(data=IGCC_data_import(),
+                     aes(x=Date,
+                         y=value,
+                         group=variable,
+                         fill=variable),
+                     width=15*60,
+                     color='black',
+                     stat='identity') +
+            geom_bar(data=IGCC_data_export(),
+                     aes(x=Date,
+                         y=value,
+                         group=variable,
+                         fill=variable),
+                     width=15*60,
+                     color='black',
+                     stat='identity') +
+            scale_fill_manual(values=coloring_IGCC) +
+            scale_x_datetime(limits=c(Sys.Date() %>% as.POSIXct %>% with_tz('Europe/Amsterdam') %>% trunc('days') %>% as.POSIXct,
+                                     (Sys.Date() +1) %>% as.POSIXct) %>% with_tz('Europe/Amsterdam')  %>% trunc('days') %>% as.POSIXct,
+                             breaks=date_breaks('2 hours'),
+                             expand=c(0, 0),
+                             minor_breaks=date_breaks('1 hours'),
+                             labels=date_format("%H", tz='Europe/Amsterdam')) +
+            geom_hline(aes(yintercept=0), size=2) +
+            ylab('MW') +
+            xlab('Time') +
+            annotate("text",
+                     x = Sys.Date() %>% as.POSIXct,
+                     y = Inf,
+                     vjust = 1,
+                     hjust=0,
+                     label = "Exported"
+            ) +
+            annotate("text",
+                     x = Sys.Date() %>% as.POSIXct,
+                     y = -Inf,
+                     vjust=-.1,
+                     hjust=0,
+                     label="Imported"
+            ) + theme(legend.position = 'bottom') +
+            guides(fill = guide_legend(nrow=1))
     })
 }

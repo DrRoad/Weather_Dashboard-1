@@ -35,7 +35,24 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql()
+                import_data_sql(model=input$Model)
+            })
+        return(df_raw_sql)
+    })
+	Meteosat_sql <- reactive({
+        # To update every x minutes, there is this autoInvalidate
+      
+        input$refresh_data
+
+        Meteosat_sql <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Importing meteosat data from DataHub',
+            detail='Love and Kisses, Luuk',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                import_data_sql(model=input$Model)
             })
         return(df_raw_sql)
     })
@@ -78,50 +95,79 @@ server <- function(input, output, session) {
         }
         return(compared_time)
     })
-
+	
+	model_observable <- reactive({
+		if (input$Model == 'GFS') {
+			return(conversion_list_GFS[[input$observable]])}
+		if (input$Model == 'HIRLAM') {
+			return(conversion_list_HIRLAM[[input$observable]])}
+	})
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
         if(nrow(df)==0) {print("Nothing");return(data.frame())}
-        observable_gfs <- conversion_list_GFS[[input$observable]]
-        df_model_raster <- raster_maker(df, observable_gfs)
+        observable_fc <- model_observable()
+        df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
     })
     df_knmi <- reactive({
         df <- df()
         observable_knmi <- conversion_list_KNMI[[input$observable]]
-        observable_gfs <- conversion_list_GFS[[input$observable]]
+        observable_fc <- model_observable()
         df_knmi <- df[!df[[observable_knmi]] %>% is.na,
-                      c(observable_knmi, observable_gfs, 'knmi_lat', 'knmi_lon', 'knmi_name')]
+                      c(observable_knmi, observable_fc, 'knmi_lat', 'knmi_lon', 'knmi_name')]
         df_knmi <- df_knmi[!duplicated(df_knmi), ]
-        names(df_knmi)[c(1, 2)] <- c('knmi', 'gfs')
-        df_knmi$dif <- df_knmi$knmi %>% as.numeric - df_knmi$gfs
+        names(df_knmi)[c(1, 2)] <- c('knmi', 'model')
+        df_knmi$dif <- df_knmi$knmi %>% as.numeric - df_knmi$model
 
         return(df_knmi)
     })
     df_owm <- reactive({
         df <- df()
         observable_owm <- conversion_list_OWM[[input$observable]]
-        observable_gfs <- conversion_list_GFS[[input$observable]]
+        observable_fc <- model_observable()
         df_owm <- df[!df[[observable_owm]] %>% is.na,
-                     c(observable_owm, observable_gfs, 'owm_lat', 'owm_lon', 'owm_name')]
+                     c(observable_owm, observable_fc, 'owm_lat', 'owm_lon', 'owm_name')]
         df_owm <- df_owm[!duplicated(df_owm), ]
-        names(df_owm)[c(1, 2)] <- c('owm', 'gfs')
-        df_owm$dif <- df_owm$owm %>% as.numeric - df_owm$gfs
+        names(df_owm)[c(1, 2)] <- c('owm', 'model')
+        df_owm$dif <- df_owm$owm %>% as.numeric - df_owm$model
 
         return(df_owm)
     })
     df_metoffice <- reactive({
         df <- df()
         observable_metoffice <- conversion_list_MetOffice[[input$observable]]
-        observable_gfs <- conversion_list_GFS[[input$observable]]
+        observable_fc <- model_observable()
         df_metoffice <- df[!df[[observable_metoffice]] %>% is.na,
-                     c(observable_metoffice, observable_gfs, 'metoffice_lat', 'metoffice_lon', 'metoffice_name')]
+                     c(observable_metoffice, observable_fc, 'metoffice_lat', 'metoffice_lon', 'metoffice_name')]
         df_metoffice <- df_metoffice[!duplicated(df_metoffice), ]
-        names(df_metoffice)[c(1, 2)] <- c('metoffice', 'gfs')
-        df_metoffice$dif <- df_metoffice$metoffice %>% as.numeric - df_metoffice$gfs
+        names(df_metoffice)[c(1, 2)] <- c('metoffice', 'model')
+        df_metoffice$dif <- df_metoffice$metoffice %>% as.numeric - df_metoffice$model
 
         return(df_metoffice)
+    })
+	df_MeteoSat_raw <- reactive({
+		autoInvalidate_data_fetch_sql()
+        input$refresh_data
+		if (!input$Meteosat_rain & !input$Meteosat_clouds){return(data.frame())}
+		Meteosat_raw <- Meteosat_sql()
+		return(Meteosat_raw)
+	})
+	df_Meteosat_clouds <- reactive({
+		if (!input$Meteosat_clouds){return(data.frame())}
+        df_MeteoSat_raw <- df_MeteoSat_raw()
+        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
+        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
+        df_Meteosat_cot_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'cot'])
+		return(df_Meteosat_cot_raster)
+    })
+    df_Meteosat_rain <- reactive({
+        if (!input$Meteosat_rain){return(data.frame())}
+		    df_MeteoSat_raw <- df_MeteoSat_raw()
+        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
+        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
+        df_Meteosat_precip_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'precip'])
+		return(df_Meteosat_precip_raster)
     })
 
 
@@ -203,6 +249,40 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
+	
+	observeEvent({df_Meteosat_rain(); input$Meteosat_rain}, {
+        df_Meteosat_rain <- df_Meteosat_rain()
+        leafletProxy('map') %>%
+            clearGroup('MeteoSat_precip')
+        if(df_Meteosat_rain %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
+            # clearGroup('contourlines') %>%
+            # clearGroup('HL') %>%
+            addRasterImage(log10(frame_MeteoSat_precip()),
+                               color=colors_MeteoSat_precip,
+                               opacity=0.45,
+                               group='MeteoSat_precip')
+    })
+	observeEvent({df_Meteosat_clouds(); input$Meteosat_clouds}, {
+        df_Meteosat_clouds <- df_Meteosat_clouds()
+        leafletProxy('map') %>%
+            clearGroup('MeteoSat_cot')
+        if(df_Meteosat_clouds %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
+            # clearGroup('contourlines') %>%
+            # clearGroup('HL') %>%
+            addRasterImage(log10(frame_MeteoSat_cot()),
+                               color=colors_MeteoSat_cot,
+                               opacity=0.45,
+                               group='MeteoSat_cot')
+    })
+	
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
             clearGroup('KNMI_markers')
@@ -223,7 +303,7 @@ server <- function(input, output, session) {
                              popup=paste0("KNMI", "<br>",
                                           "stationname: ", df_knmi$knmi_name, "<br>",
                                           "KNMI:: ", df_knmi$knmi %>% round(2),"<br>",
-                                          "Model: ", df_knmi$gfs %>% round(2)),
+                                          "Model: ", df_knmi$model %>% round(2)),
                              fillColor=suppressWarnings(cpalet_circlemarkers()(df_knmi$dif)),
                              color='black',
                              fillOpacity=1,
@@ -250,7 +330,7 @@ server <- function(input, output, session) {
                              popup=paste0("OWM", "<br>",
                                           "stationname: ", df_owm$owm_name, "<br>",
                                           "OWM: ", df_owm$owm %>% round(2),"<br>",
-                                          "Model: ", df_owm$gfs %>% round(2)),
+                                          "Model: ", df_owm$model %>% round(2)),
                              fillColor=suppressWarnings(cpalet_circlemarkers()(df_owm$dif)),
                              color='orange',
                              fillOpacity=1,
@@ -277,7 +357,7 @@ server <- function(input, output, session) {
                              popup=paste0("MetOffice", "<br>",
                                           "stationname: ", df_metoffice$metoffice_name, "<br>",
                                           "MetOffice:: ", df_metoffice$metoffice %>% round(2),"<br>",
-                                          "Model: ", df_metoffice$gfs %>% round(2)),
+                                          "Model: ", df_metoffice$model %>% round(2)),
                              fillColor=suppressWarnings(cpalet_circlemarkers()(df_metoffice$dif)),
                              color='white',
                              fillOpacity=1,
@@ -339,7 +419,8 @@ server <- function(input, output, session) {
         }
         df <- df()
         df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
-        icon <- icons(wind_directions_location[df_wind$gfs_wind_direction %>%
+        icon <- icons(wind_directions_location[if (input$Model == 'GFS'){df_wind$gfs_wind_direction} 
+											   else if (input$Model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
                                                    divide_by(22.5) %>%
                                                    round(0) %>%
                                                    multiply_by(22.5) %>%
@@ -390,7 +471,7 @@ server <- function(input, output, session) {
         # Datetime of begin/end of the day
         datetimes <- get_datetimes_history()
         # Get all rows for the specific KNMI station since beginning of this day
-        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s' ORDER BY datetime",
+        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s'",
                         rv$knmi_station_history,
                         datetimes$datetime_begin
         )
@@ -416,6 +497,13 @@ server <- function(input, output, session) {
                                       y=conversion_list_GFS[[input$observable]]),
                            color='black',
                            linetype='dashed')
+	      knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.1, 0) * 0.1
+        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.1, 0) * 0.1
+        df_hirlam_history_plot <- get_hirlam_history(knmi_lat, knmi_lon, datetimes)
+        p <- p + geom_line(data=df_hirlam_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_HIRLAM[[input$observable]]),
+                           color='green')
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
@@ -454,7 +542,13 @@ server <- function(input, output, session) {
                                       y=conversion_list_GFS[[input$observable]]),
                            color='black',
                            linetype='dashed')
-
+		metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.1, 0) * 0.1
+        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.1, 0) * 0.1
+        df_hirlam_history_plot <- get_hirlam_history(metoffice_lat, metoffice_lon, datetimes)
+        p <- p + geom_line(data=df_hirlam_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_HIRLAM[[input$observable]]),
+                           color='green')
         p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         return(p)
     })
@@ -477,28 +571,28 @@ server <- function(input, output, session) {
     IGCC_data_export <- reactive({
         df_IGCC <- IGCC_data()
         export <- names(df_IGCC)[grepl(names(df_IGCC), pattern='export_vol')]
-        IGCC_data_export <- df_IGCC[, c('Date', export)]
+        IGCC_data_export <- df_IGCC[, c('datetime', export)]
         export <- export %>% str_sub(1, 2) %>% toupper
-        names(IGCC_data_export) <- c('Date', export)
+        names(IGCC_data_export) <- c('datetime', export)
 
-        IGCC_data_export <- IGCC_data_export%>% melt(id.vars='Date') %>% na.omit
+        IGCC_data_export <- IGCC_data_export%>% melt(id.vars='datetime') %>% na.omit
 
         return(IGCC_data_export)
     })
     IGCC_data_import <- reactive({
         df_IGCC <- IGCC_data()
         import <- names(df_IGCC)[grepl(names(df_IGCC), pattern='import_vol')]
-        IGCC_data_import <- df_IGCC[, c('Date', import)]
+        IGCC_data_import <- df_IGCC[, c('datetime', import)]
         import <- import %>% str_sub(1, 2) %>% toupper
-        names(IGCC_data_import) <- c('Date', import)
+        names(IGCC_data_import) <- c('datetime', import)
         IGCC_data_import[, import] <- -1. * IGCC_data_import[, import]
-        IGCC_data_import <- IGCC_data_import%>% melt(id.vars='Date') %>% na.omit
+        IGCC_data_import <- IGCC_data_import%>% melt(id.vars='datetime') %>% na.omit
         return(IGCC_data_import)
     })
     output$igcc_plot <- renderPlot({
         ggplot() +
             geom_bar(data=IGCC_data_import(),
-                     aes(x=Date,
+                     aes(x=datetime,
                          y=value,
                          group=variable,
                          fill=variable),
@@ -506,7 +600,7 @@ server <- function(input, output, session) {
                      color='black',
                      stat='identity') +
             geom_bar(data=IGCC_data_export(),
-                     aes(x=Date,
+                     aes(x=datetime,
                          y=value,
                          group=variable,
                          fill=variable),

@@ -66,9 +66,27 @@ ui <- dashboardPage(title="Weather Dashboard",
                                     switchInput('wind_direction',
                                                 label='Direction',
                                                 size='small',
-                                                value=TRUE,
+                                                value=FALSE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
+                                ),
+                                div(
+                                  style='height: 25px;',
+                                  switchInput('Meteosat_clouds',
+                                              label='Clouds',
+                                              size='small',
+                                              value=FALSE,
+                                              labelWidth='60px',
+                                              handleWidth='30px')
+                                ),
+                                div(
+                                  style='height: 25px;',
+                                  switchInput('Meteosat_rain',
+                                              label='Rain',
+                                              size='small',
+                                              value=FALSE,
+                                              labelWidth='60px',
+                                              handleWidth='30px')
                                 )
                             ),
                             HTML("<br/>"),
@@ -104,6 +122,11 @@ ui <- dashboardPage(title="Weather Dashboard",
                                        )
                                 )
                             ),
+							pickerInput('Model',
+                                    'Model',
+                                    choices = c('GFS',
+                                                'HIRLAM'),
+                                    selected = 'GFS'),
                             pickerInput('observable',
                                         'Observable',
                                         choices=c('Temperature',

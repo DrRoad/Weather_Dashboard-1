@@ -31,27 +31,27 @@ import_data_sql <- function(max_hours_back = 4, max_hours_forward=1,model) {
         strftime("%Y-%m-%d %H:%M:%S")
     # basically, give everything between min and max datetime
     if (model == 'HIRLAM') {
-	stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
+        stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
                     (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) end_value,
                     (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
                     (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weather_sources_view_hirlam;",
-                    minimal_datetime,
-                    maximal_datetime,
-                    minimal_datetime,
-                    maximal_datetime)
-    a = run.query(stmt)
-    return(a$result)}
-	if (model == 'GFS') {
-	stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) start_value ,
+                        minimal_datetime,
+                        maximal_datetime,
+                        minimal_datetime,
+                        maximal_datetime)
+    }
+    if (model == 'GFS') {
+        stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) start_value ,
 					(select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) end_value,
 					(select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
 					(select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.weather_sources_view_gfs;",
-                    minimal_datetime,
-                    maximal_datetime,
-                    minimal_datetime,
-                    maximal_datetime)
+                        minimal_datetime,
+                        maximal_datetime,
+                        minimal_datetime,
+                        maximal_datetime)
+    }
     a = run.query(stmt)
-    return(a$result)}
+    return(a$result)
 }
 
 run.query <- function(stmt) {

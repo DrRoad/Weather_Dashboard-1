@@ -21,6 +21,7 @@ server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
+    autoinvalidate_MeteoSat <- reactivetimer(3 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -30,7 +31,7 @@ server <- function(input, output, session) {
         df_raw_sql <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
             message='Importing data from DataHub',
-            detail='Love and Kisses, Mathias',
+            detail='Kind regards, Mathias',
             value=NULL,
             style='old',
             {
@@ -41,13 +42,13 @@ server <- function(input, output, session) {
     })
 	Meteosat_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
-      
+	    autoinvalidate_MeteoSat()
         input$refresh_data
 
         Meteosat_sql <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
-            message='Importing meteosat data from DataHub',
-            detail='Love and Kisses, Luuk',
+            message='Importing MeteoSat data from DataHub',
+            detail='Kind regards, Luuk',
             value=NULL,
             style='old',
             {
@@ -95,7 +96,7 @@ server <- function(input, output, session) {
         }
         return(compared_time)
     })
-	
+
 	model_observable <- reactive({
 		if (input$Model == 'GFS') {
 			return(conversion_list_GFS[[input$observable]])}
@@ -105,7 +106,7 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing");return(data.frame())}
+        if(nrow(df)==0) {print("Nothing in raw df");return(data.frame())}
         observable_fc <- model_observable()
         df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
@@ -163,7 +164,7 @@ server <- function(input, output, session) {
     })
     df_Meteosat_rain <- reactive({
         if (!input$Meteosat_rain){return(data.frame())}
-		    df_MeteoSat_raw <- df_MeteoSat_raw()
+        df_MeteoSat_raw <- df_MeteoSat_raw()
         frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
         coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
         df_Meteosat_precip_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'precip'])
@@ -249,7 +250,7 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	
+
 	observeEvent({df_Meteosat_rain(); input$Meteosat_rain}, {
         df_Meteosat_rain <- df_Meteosat_rain()
         leafletProxy('map') %>%
@@ -282,7 +283,7 @@ server <- function(input, output, session) {
                                opacity=0.45,
                                group='MeteoSat_cot')
     })
-	
+
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
             clearGroup('KNMI_markers')
@@ -419,7 +420,7 @@ server <- function(input, output, session) {
         }
         df <- df()
         df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
-        icon <- icons(wind_directions_location[if (input$Model == 'GFS'){df_wind$gfs_wind_direction} 
+        icon <- icons(wind_directions_location[if (input$Model == 'GFS'){df_wind$gfs_wind_direction}
 											   else if (input$Model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
                                                    divide_by(22.5) %>%
                                                    round(0) %>%

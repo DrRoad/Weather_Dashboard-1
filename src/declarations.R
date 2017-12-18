@@ -6,10 +6,10 @@ base_path = "../data/"
 
 data_path = file.path(base_path, "data_hot_tub.csv")
 
-conversion_list_HIRLAM <<- list("Windspeed"="windspeed",
-                                "Temperature"="Temperature_height_above_ground",
-                                "Air pressure"="Pressure_altitude_above_msl",
-                                "Radiation"="Radiation")
+conversion_list_HIRLAM <<- list("Windspeed"="hirlam_wind_speed",
+                                "Temperature"="hirlam_temp",
+                                "Air pressure"="hirlam_air_pressure",
+                                "Radiation"="hirlam_radiation")
 
 conversion_list_GFS <<- list("Windspeed"="gfs_wind_speed",
                              "Temperature"="gfs_temp",
@@ -62,43 +62,52 @@ coloring_IGCC <- c("DE" = "white",
 
 # Query statements ----
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
-                            gfs.2_metre_temperature_level_2 as gfs_temp,
-                            gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
-                            gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
-                            gfs.surface_pressure_level_0 as gfs_air_pressure
+                           gfs.2_metre_temperature_level_2 as gfs_temp,
+                           gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
+                           gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+                           gfs.surface_pressure_level_0 as gfs_air_pressure
 FROM gfs_data_source gfs INNER JOIN
 (
-    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
-    FROM gfs_data_source
-    WHERE datetime >= '%s' AND datetime < '%s' AND lat = %.2f AND lon = %.2f
-    GROUP BY datetime, lat, lon
+   SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+   FROM gfs_data_source
+   WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432  AND lat = %.2f AND lon = %.2f
+   GROUP BY datetime, lat, lon
 ) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"
 
-stmt_gfs_history_apx <- "SELECT datetime,
-                                2_metre_temperature_level_2 as gfs_temp,
-                                10_metre_wind_speed_level_10 as gfs_wind_speed,
-                                downward_short_wave_radiation_flux_level_0 as gfs_radiation,
-                                surface_pressure_level_0 as gfs_air_pressure
-                         FROM gfs_data_source
-                         WHERE
-                             datetime >= '%s' AND
-                             datetime < '%s' AND
-                             hours_ahead >= 17 AND
-                             hours_ahead <= 41 AND
-                             lat = %.2f AND
-                             lon = %.2f AND
-                             model_date = '%s' AND
-                             model_run = 6
-                         ORDER BY datetime"
+stmt_gfs_history_apx <- "SELECT datetime,2_metre_temperature_level_2 as gfs_temp,10_metre_wind_speed_level_10 as gfs_wind_speed,downward_short_wave_radiation_flux_level_0 as gfs_radiation,surface_pressure_level_0 as gfs_air_pressure FROM weatherforecast.gfs_data_source
+WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+AND hours_ahead >= 17
+AND hours_ahead <= 41
+AND lat = %.2f
+AND lon = %.2f
+AND model_date = '%s'
+AND model_run = 6"
+
+stmt_hirlam_history <- "SELECT hirlam.datetime as datetime,
+  hirlam.2_metre_temperature - 273.15 as hirlam_temp,
+  hirlam.10_metre_wind_speed as hirlam_wind_speed,
+  hirlam.global_radiation_flux as hirlam_radiation,
+  hirlam.pressure as hirlam_air_pressure
+  FROM hirlam_data_source hirlam INNER JOIN
+  (
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM hirlam_data_source
+    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND lat = %.2f AND lon = %.2f
+    GROUP BY datetime, lat, lon
+  ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
+
+stmt_meteosat <- "SELECT * from weatherforecast.meteosat_data_source 
+where partition_col>=floor((UNIX_TIMESTAMP('2017-12-15 02:00:00') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48 
+and partition_col<=floor((UNIX_TIMESTAMP('2017-12-15 10:00:00') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48"
 
 stmt_igcc <- "SELECT mk1.*
 FROM mkonline_data_source mk1 INNER JOIN
 (
-    SELECT Date, MAX(processed_time) as processed_time
+    SELECT datetime, MAX(processed_time) as processed_time
     FROM mkonline_data_source
-    WHERE Date >= '%s'
-    GROUP BY Date
-) mk2 on mk1.Date = mk2.Date AND mk1.processed_time = mk2.processed_time ORDER BY Date"
+    WHERE datetime >= '%s'
+    GROUP BY datetime
+) mk2 on mk1.datetime = mk2.datetime AND mk1.processed_time = mk2.processed_time ORDER BY datetime"
 
 stmt_metoffice_history = "SELECT mo1.*
 FROM metoffice_data_source mo1 INNER JOIN
@@ -108,3 +117,35 @@ FROM metoffice_data_source mo1 INNER JOIN
     WHERE name = '%s' AND datetime >= '%s' AND datetime <= '%s'
     GROUP BY datetime
 ) mo2 on mo1.datetime = mo2.datetime AND mo1.processed_time = mo2.processed_time and mo1.name = mo2.name ORDER BY datetime"
+
+colors_MeteoSat_cot <- colorBin(c("#ffffff", "#000000"), domain=c(-1.5, 2.41), na.color="transparent", bins=15)
+colors_MeteoSat_precip <- colorBin(c("#0000ff", "#ff0000"), domain=c(-2, 1), na.color="transparent", bins=20)
+colors_MeteoSat <- colorBin(c("#0000ff00", "#ff0000ff"), domain=c(-200, 200), na.color="transparent", bins=20)
+
+domain_MeteoSat_map <-list("sds"=c(0, 1000),
+                           "sds_diff"=c(0,1000),
+                           "cot"=c(0,300),
+                           "caf"=c(0,3),
+                           "precip"=c(0,20))
+cpalet_MeteoSat_map <- list(
+    "sds"=colorBin(c("#0000ffff", "#ffffff00", "#ff0000ff"),
+                   domain=domain_MeteoSat_map[["sds"]],
+                   na.color="transparent",
+                   bins=20),
+    "sds_diff"=colorBin(c("#0000ffff", "#ffffff00",  "#ff0000ff"),
+                        domain=domain_MeteoSat_map[["sds_diff"]],
+                        na.color="transparent",
+                        bins=20),
+    "cot"=colorBin(c("#0000ffff", "#ffffff00", "#ff0000ff"),
+                   domain=domain_MeteoSat_map[["cot"]],
+                   na.color="transparent",
+                   bins=20),
+    "caf"=colorBin(c("#0000ffff", "#ffffff00", "#ff0000ff"),
+                   domain=domain_MeteoSat_map[["caf"]],
+                   na.color="transparent",
+                   bins=4),
+    "precip"=colorBin(c("#ffffff00", "#0000ff00"),
+                      domain=domain_MeteoSat_map[["precip"]],
+                      na.color="transparent",
+                      bins=20)
+)

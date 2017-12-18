@@ -1,4 +1,26 @@
-import_data_sql <- function(max_hours_back = 4, max_hours_forward=1) {
+# import_data_sql <- function(max_hours_back = 4, max_hours_forward=1,model) {
+
+    # # Min and Max datetime for the query
+    # minimal_datetime <- (Sys.time() %>%
+                             # trunc('hour') - max_hours_back * 60 * 60) %>%
+        # strftime("%Y-%m-%d %H:%M:%S")
+    # maximal_datetime <- (Sys.time() %>%
+                             # trunc('hour') + max_hours_forward * 60 * 60) %>%
+        # strftime("%Y-%m-%d %H:%M:%S")
+    # # basically, give everything between min and max datetime
+    # stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
+                    # (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) end_value,
+                    # (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
+                    # (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weather_sources_view_hirlam;",
+                    # minimal_datetime,
+                    # maximal_datetime,
+                    # minimal_datetime,
+                    # maximal_datetime)
+    # a = run.query(stmt)
+    # return(a$result)
+# }
+
+import_data_sql <- function(max_hours_back = 4, max_hours_forward=1,model) {
 
     # Min and Max datetime for the query
     minimal_datetime <- (Sys.time() %>%
@@ -8,11 +30,28 @@ import_data_sql <- function(max_hours_back = 4, max_hours_forward=1) {
                              trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
     # basically, give everything between min and max datetime
-    stmt <- sprintf("SELECT * from weather_sources_view WHERE datetime >= '%s' AND datetime <= '%s'",
+    if (model == 'HIRLAM') {
+	stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
+                    (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) end_value,
+                    (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
+                    (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weather_sources_view_hirlam;",
+                    minimal_datetime,
+                    maximal_datetime,
                     minimal_datetime,
                     maximal_datetime)
     a = run.query(stmt)
-    return(a$result)
+    return(a$result)}
+	if (model == 'GFS') {
+	stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) start_value ,
+					(select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) end_value,
+					(select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
+					(select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.weather_sources_view_gfs;",
+                    minimal_datetime,
+                    maximal_datetime,
+                    minimal_datetime,
+                    maximal_datetime)
+    a = run.query(stmt)
+    return(a$result)}
 }
 
 run.query <- function(stmt) {
@@ -63,16 +102,18 @@ get_IGCC_data <- function() {
                         with_tz('UTC') %>%
                         strftime('%Y-%m-%d %H:%M:%S'))
     df_IGCC <- run.query(stmt)$result
-    df_IGCC$Date <- df_IGCC$Date %>%
+    df_IGCC$datetime <- df_IGCC$datetime %>%
         strptime(format="%Y-%m-%d %H:%M:%S", tz='UTC') %>%
         with_tz('Europe/Amsterdam') %>%
         as.POSIXct
-    df_IGCC$Date <- df_IGCC$Date + 7.5 * 60
+    df_IGCC$datetime <- df_IGCC$datetime + 7.5 * 60
     return(df_IGCC)
 }
 
 get_datetimes_history <- function() {
     # Datetime of begin/end of the day
+    #begintime <- Sys.time() - hours(12)
+    #endtime <- Sys.time() + hours(12)
     datetime_begin <- Sys.time() %>%
         with_tz('Europe/Amsterdam') %>%
         trunc('days') %>%
@@ -102,6 +143,18 @@ get_gfs_history <- function(lat, lon, datetimes) {
     return(df_gfs_history_plot)
 }
 
+get_hirlam_history <- function(lat, lon, datetimes) {
+  # Construct the stmt by filling in the blanks in the base stmt
+  stmt <- sprintf(stmt_hirlam_history %>% strwrap(width=10000, simplify=TRUE),
+                  datetimes$datetime_begin,
+                  datetimes$datetime_end,
+                  lat,
+                  lon)
+  df_hirlam_history_plot <- run.query(stmt)$result
+  df_hirlam_history_plot$datetime <- df_hirlam_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
+  return(df_hirlam_history_plot)
+}
+
 get_gfs_history_apx <- function(lat, lon, datetimes) {
     stmt <- sprintf(stmt_gfs_history_apx %>% strwrap(width=10000, simplify=TRUE),
                     datetimes$datetime_begin,
@@ -113,3 +166,5 @@ get_gfs_history_apx <- function(lat, lon, datetimes) {
     df_gfs_history_plot_apx$datetime <- df_gfs_history_plot_apx$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
     return(df_gfs_history_plot_apx)
 }
+
+

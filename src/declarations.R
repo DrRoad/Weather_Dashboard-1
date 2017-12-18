@@ -102,8 +102,8 @@ FROM hirlam_data_source hirlam INNER JOIN
 ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
 
 stmt_meteosat <- "SELECT * FROM weatherforecast.meteosat_data_source
-WHERE partition_col>=floor((UNIX_TIMESTAMP('2017-12-15 02:00:00') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48
-AND partition_col<=floor((UNIX_TIMESTAMP('2017-12-15 10:00:00') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48"
+WHERE partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48
+AND partition_col<=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48"
 
 stmt_igcc <- "SELECT mk1.*
 FROM mkonline_data_source mk1 INNER JOIN

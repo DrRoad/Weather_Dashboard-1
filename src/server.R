@@ -21,7 +21,7 @@ server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
-    autoinvalidate_MeteoSat <- reactivetimer(3 * 60 * 1000, session)
+    autoinvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -36,16 +36,17 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql(model=input$Model)
+                import_data_sql_model(model=input$Model)
             })
         return(df_raw_sql)
     })
-	Meteosat_sql <- reactive({
+	df_meteosat_sql_raw <- reactive({
         # To update every x minutes, there is this autoInvalidate
-	    autoinvalidate_MeteoSat()
-        input$refresh_data
+	    autoInvalidate_data_fetch_sql()
+	    input$refresh_data
+	    if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
 
-        Meteosat_sql <- withProgress(
+        df_meteosat_sql_raw <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
             message='Importing MeteoSat data from DataHub',
             detail='Kind regards, Luuk',
@@ -53,9 +54,11 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql(model=input$Model)
+                import_data_sql_meteosat()
             })
-        return(df_raw_sql)
+        df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
+        df_meteosat_sql_raw$precip <- df_meteosat_sql_raw$precip + rexp(nrow(df_meteosat_sql_raw), .6)
+        return(df_meteosat_sql_raw)
     })
     df_raw <- reactive({
         # Import the raw data
@@ -147,28 +150,18 @@ server <- function(input, output, session) {
 
         return(df_metoffice)
     })
-	df_MeteoSat_raw <- reactive({
-		autoInvalidate_data_fetch_sql()
-        input$refresh_data
-		if (!input$Meteosat_rain & !input$Meteosat_clouds){return(data.frame())}
-		Meteosat_raw <- Meteosat_sql()
-		return(Meteosat_raw)
-	})
-	df_Meteosat_clouds <- reactive({
+
+    df_Meteosat_cot_raster <- reactive({
 		if (!input$Meteosat_clouds){return(data.frame())}
-        df_MeteoSat_raw <- df_MeteoSat_raw()
-        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
-        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
-        df_Meteosat_cot_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'cot'])
+	    df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_Meteosat_cot_raster <- raster_maker(df_meteosat_sql_raw, 'cot')
 		return(df_Meteosat_cot_raster)
     })
-    df_Meteosat_rain <- reactive({
+	df_Meteosat_precip_raster <- reactive({
         if (!input$Meteosat_rain){return(data.frame())}
-        df_MeteoSat_raw <- df_MeteoSat_raw()
-        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
-        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
-        df_Meteosat_precip_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'precip'])
-		return(df_Meteosat_precip_raster)
+        df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_Meteosat_precip_raster <- raster_maker(df_meteosat_sql_raw, 'precip')
+        return(df_Meteosat_precip_raster)
     })
 
 
@@ -251,39 +244,38 @@ server <- function(input, output, session) {
                       layerId='circlemarkers_legend')
     })
 
-	observeEvent({df_Meteosat_rain(); input$Meteosat_rain}, {
-        df_Meteosat_rain <- df_Meteosat_rain()
-        leafletProxy('map') %>%
-            clearGroup('MeteoSat_precip')
-        if(df_Meteosat_rain %>% typeof == 'list') {
-            # Returned empty from function before
-            return()
-        }
-        leafletProxy('map') %>%
-            # clearGroup('contourlines') %>%
-            # clearGroup('HL') %>%
-            addRasterImage(log10(frame_MeteoSat_precip()),
-                               color=colors_MeteoSat_precip,
-                               opacity=0.45,
-                               group='MeteoSat_precip')
-    })
-	observeEvent({df_Meteosat_clouds(); input$Meteosat_clouds}, {
-        df_Meteosat_clouds <- df_Meteosat_clouds()
+	observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
+	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
             clearGroup('MeteoSat_cot')
-        if(df_Meteosat_clouds %>% typeof == 'list') {
+        if(df_Meteosat_cot_raster %>% typeof == 'list') {
             # Returned empty from function before
             return()
         }
         leafletProxy('map') %>%
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
-            addRasterImage(log10(frame_MeteoSat_cot()),
+            addRasterImage(log10(df_Meteosat_cot_raster),
                                color=colors_MeteoSat_cot,
                                opacity=0.45,
                                group='MeteoSat_cot')
     })
-
+	observeEvent({df_Meteosat_precip_raster(); input$Meteosat_rain}, {
+	    df_Meteosat_precip_raster <- df_Meteosat_precip_raster()
+	    leafletProxy('map') %>%
+	        clearGroup('MeteoSat_precip')
+	    if(df_Meteosat_precip_raster %>% typeof == 'list') {
+	        # Returned empty from function before
+	        return()
+	    }
+	    leafletProxy('map') %>%
+	        # clearGroup('contourlines') %>%
+	        # clearGroup('HL') %>%
+	        addRasterImage(log10(df_Meteosat_precip_raster),
+	                       color=colors_MeteoSat_precip,
+	                       opacity=0.45,
+	                       group='MeteoSat_precip')
+	})
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
             clearGroup('KNMI_markers')

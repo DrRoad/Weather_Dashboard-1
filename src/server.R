@@ -57,7 +57,7 @@ server <- function(input, output, session) {
                 import_data_sql_meteosat()
             })
         df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
-        df_meteosat_sql_raw$precip <- df_meteosat_sql_raw$precip + rexp(nrow(df_meteosat_sql_raw), .6)
+        df_meteosat_sql_raw$precip <- df_meteosat_sql_raw$precip + rexp(nrow(df_meteosat_sql_raw), 100)
         return(df_meteosat_sql_raw)
     })
     df_raw <- reactive({
@@ -403,7 +403,7 @@ server <- function(input, output, session) {
                        group="external_windparks")
 
     })
-    observeEvent({input$wind_direction}, {
+    observeEvent({df(); input$wind_direction}, {
         leafletProxy('map') %>%
             clearGroup('wind_direction')
         if (!input$wind_direction) {

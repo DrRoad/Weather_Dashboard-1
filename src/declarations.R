@@ -6,15 +6,17 @@ base_path = "../data/"
 
 data_path = file.path(base_path, "data_hot_tub.csv")
 
+# conversion lists models
+conversion_list_GFS <<- list("Windspeed"="gfs_wind_speed",
+                             "Temperature"="gfs_temp",
+                             "Air pressure"="gfs_air_pressure",
+                             "Radiation"="gfs_radiation")
 conversion_list_HIRLAM <<- list("Windspeed"="hirlam_wind_speed",
                                 "Temperature"="hirlam_temp",
                                 "Air pressure"="hirlam_air_pressure",
                                 "Radiation"="hirlam_radiation")
 
-conversion_list_GFS <<- list("Windspeed"="gfs_wind_speed",
-                             "Temperature"="gfs_temp",
-                             "Air pressure"="gfs_air_pressure",
-                             "Radiation"="gfs_radiation")
+# conversion lists observations
 conversion_list_KNMI <<- list("Windspeed"="knmi_wind",
                               "Temperature"="knmi_temp",
                               "Air pressure"="knmi_air_pressure",

@@ -80,6 +80,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 handleWidth='30px')
                                 ),
                                 div(
+                                    style='height: 25px;',
+                                    switchInput('isobars',
+                                                label='Isobars',
+                                                size='small',
+                                                value=FALSE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
+                                ),
+                                div(
                                   style='height: 25px;',
                                   switchInput('Meteosat_clouds',
                                               label='Clouds',

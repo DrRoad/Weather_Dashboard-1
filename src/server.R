@@ -60,11 +60,6 @@ server <- function(input, output, session) {
         df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
         return(df_meteosat_sql_raw)
     })
-    df_raw <- reactive({
-        # Import the raw data
-        df_raw <- import_data()
-        return(df_raw)
-    })
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
         # This will be the main dataframe from now on
@@ -163,6 +158,20 @@ server <- function(input, output, session) {
         df_Meteosat_precip_raster <- raster_maker(df_meteosat_sql_raw, 'precip')
         return(df_Meteosat_precip_raster)
     })
+	df_lines <- reactive({
+	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
+	                     'GFS'='gfs_air_pressure',
+	                     'HIRLAM'='hirlam_air_pressure')
+
+	    df <- df()
+	    df <- df[do.call('order', df[c('lat', 'lon')]), ]
+	    lon <- df$lon %>% unique #%>% sort
+	    lat <- df$lat %>% unique #%>% sort
+	    z <- matrix(df[[column_model]], length(lon), byrow=FALSE)
+	    lines <- contourLines(lon, lat, z, levels=seq(948,1052,4))
+
+	    return(lines)
+	})
 
 
     # colorpalettes, domains and other boring stuff ----
@@ -448,6 +457,71 @@ server <- function(input, output, session) {
                        group='wind_direction')
 
 
+    })
+    observeEvent({lines(); input$isobars}, {
+        leafletProxy('map') %>%
+            clearGroup('isobars')
+        if (!input$isobars) {return()}
+        df_lines <- df_lines()
+        for (line in df_lines) {
+            lng=line$x
+            lng = c(lng, rev(lng))
+            lat=line$y
+            lat = c(lat, rev(lat))
+            leafletProxy('map') %>%
+                addPolylines(lng=lng,
+                             lat=lat,
+                             fill=FALSE,
+                             color='black',
+                             weight=2,
+                             opacity=1,
+                             options=pathOptions(lineJoin = TRUE),
+                             group='isobars')
+
+            # Change this number to change the number of markers denoting the value
+            places <- (c(3) /6 * length(line$x)) %>% round
+            line <- line %>% data.frame
+            leafletProxy('map') %>%
+                addLabelOnlyMarkers(data=line[places, ],
+                                    lng=~x,
+                                    lat=~y,
+                                    label=~as.character(level),
+                                    labelOptions = labelOptions(noHide=T,
+                                                                direction='top',
+                                                                textOnly=T,
+                                                                textsize="18px"),
+                                    group='isobars')
+        }
+        df <- df()
+        column_model <- switch(isolate(input$model),
+                         'GFS'='gfs_air_pressure',
+                         'HIRLAM'='hirlam_air_pressure')
+        dataH <- df[(df[[column_model]] %>% max) == df[[column_model]], ]
+        dataH <- dataH[sample(nrow(dataH), 1), ]
+        dataH$text <- 'H'
+        dataL <- df[(df[[column_model]] %>% min) == df[[column_model]], ]
+        dataL <- dataL[sample(nrow(dataL), 1), ]
+        dataL$text <- 'L'
+        leafletProxy('map') %>%
+            addLabelOnlyMarkers(data=dataH,
+                                lng=~lon,
+                                lat=~lat,
+                                label=~as.character(text),
+                                labelOptions = labelOptions(noHide = T,
+                                                            direction = 'top',
+                                                            textOnly = T,
+                                                            textsize="50px"),
+                                group='isobars')
+        leafletProxy('map') %>%
+            addLabelOnlyMarkers(data=dataL,
+                                lng=~lon,
+                                lat=~lat,
+                                label=~as.character(text),
+                                labelOptions = labelOptions(noHide = T,
+                                                            direction = 'top',
+                                                            textOnly = T,
+                                                            textsize="50px"),
+                                group='isobars')
     })
 
     observeEvent({input$map_marker_click}, {

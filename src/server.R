@@ -356,6 +356,26 @@ server <- function(input, output, session) {
                              opacity=1,
                              group='MetOffice_markers')
     })
+    observeEvent({input$wind_rt}, {
+        leafletProxy('map') %>%
+            clearGroup('wind_rt')
+        if (!input$wind_rt) {
+            # Done here!
+            return()
+        }
+
+        icons_size <- icons(
+            iconUrl=windparkiconurl_orange,
+            iconHeight = 20,
+            iconWidth = 20
+        )
+        leafletProxy('map') %>%
+            addMarkers(lat = wind_rt_location$lat,
+                       lng = wind_rt_location$lon,
+                       icon = icons_size,
+                       group="wind_rt")
+
+    })
     observeEvent({input$windparks_Eneco}, {
         leafletProxy('map') %>%
             clearGroup('eneco_windparks')
@@ -374,8 +394,8 @@ server <- function(input, output, session) {
                        lng = Windparks$lon,
                        icon = icons_size,
                        popup=paste0(Windparks$Location, "<br>",
-                                    "capacity: ", Windparks$max_MW," MW<br>",
-                                    plot(mtcars)),
+                                    "capacity: ", Windparks$max_MW," MW<br>"
+                       ),
                        group="eneco_windparks")
 
     })

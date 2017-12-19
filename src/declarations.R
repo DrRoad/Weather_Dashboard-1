@@ -45,11 +45,16 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 # Windparks icons
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
+windparkiconurl_orange <- "../data/Windparks/wfarm_orange.png"
 
 # Wind direction icons
 directions <- seq(0, 360, 22.5) %>% round(0)
 wind_directions_location <- c("../data/arrows/arrow_icon_%03d.png" %>% sprintf(directions))
 names(wind_directions_location) <- directions
+
+wind_rt_file_location <- '../data/locations_wind.csv'
+wind_rt_location <- wind_rt_file_location %>% read.csv
+wind_rt_location <- wind_rt_location[!wind_rt_location$lat %>% is.na, ]
 
 coloring_IGCC <- c("DE" = "white",
                    "NL" = "orange",

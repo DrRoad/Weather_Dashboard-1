@@ -160,10 +160,12 @@ server <- function(input, output, session) {
     })
 	df_lines <- reactive({
 	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
-	                     'GFS'='gfs_air_pressure',
-	                     'HIRLAM'='hirlam_air_pressure')
+	                           'GFS'='gfs_air_pressure',
+	                           'HIRLAM'='hirlam_air_pressure')
 
 	    df <- df()
+	    # deduplicate df due to multiple observations at one location
+	    df <- df[!(df[, c('lon', 'lat', column_model)]) %>% duplicated, ]
 	    df <- df[do.call('order', df[c('lat', 'lon')]), ]
 	    lon <- df$lon %>% unique #%>% sort
 	    lat <- df$lat %>% unique #%>% sort
@@ -458,10 +460,12 @@ server <- function(input, output, session) {
 
 
     })
-    observeEvent({lines(); input$isobars}, {
+    observeEvent({df_lines(); input$isobars}, {
         leafletProxy('map') %>%
             clearGroup('isobars')
+        print('Plotting lines')
         if (!input$isobars) {return()}
+
         df_lines <- df_lines()
         for (line in df_lines) {
             lng=line$x

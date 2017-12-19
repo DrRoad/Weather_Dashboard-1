@@ -57,7 +57,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                     switchInput('windparks_Eneco',
                                                 label='Wind Eneco',
                                                 size='small',
-                                                value=TRUE,
+                                                value=FALSE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
                                 ),
@@ -198,7 +198,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    width="90%")
                                                     )
                                                 ),
-                                                box(title='KNMI history',
+                                                box(title='Historic observations',
                                                     solidHeader=FALSE,
                                                     collapsible=TRUE,
                                                     collapsed=TRUE,
@@ -206,20 +206,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                     width=12,
                                                     heigth=300,
                                                     fluidRow(
-                                                        plotOutput('knmi_history_plot',
-                                                                   height="250",
-                                                                   width="90%")
-                                                    )
-                                                ),
-                                                box(title='MetOffice history',
-                                                    solidHeader=FALSE,
-                                                    collapsible=TRUE,
-                                                    collapsed=TRUE,
-                                                    color='orange',
-                                                    width=12,
-                                                    heigth=300,
-                                                    fluidRow(
-                                                        plotOutput('metoffice_history_plot',
+                                                        plotOutput('observation_history_plot',
                                                                    height="250",
                                                                    width="90%")
                                                     )

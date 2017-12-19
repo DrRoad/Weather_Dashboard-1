@@ -498,6 +498,9 @@ server <- function(input, output, session) {
                                       y=conversion_list_HIRLAM[[input$observable]]),
                            color='green')
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        if (input$observable == 'Windspeed') {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
         return(p)
     })
     output$metoffice_history_plot <- renderPlot({
@@ -543,6 +546,9 @@ server <- function(input, output, session) {
                                       y=conversion_list_HIRLAM[[input$observable]]),
                            color='green')
         p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        if (input$observable == 'Windspeed') {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
         return(p)
     })
 

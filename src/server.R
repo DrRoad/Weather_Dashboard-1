@@ -8,7 +8,8 @@ pacman::p_load(shiny,
                scales,
                stringr,
                reshape2,
-               magrittr)
+               magrittr,
+               grDevices)
 
 
 source("functions.R")
@@ -242,7 +243,6 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-
 	observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
 	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%

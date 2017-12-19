@@ -20,7 +20,7 @@
     # return(a$result)
 # }
 
-import_data_sql_model <- function(max_hours_back = 4, max_hours_forward=1,model) {
+import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) {
 
     # Min and Max datetime for the query
     minimal_datetime <- (Sys.time() %>%

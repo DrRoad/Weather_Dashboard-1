@@ -8,7 +8,8 @@ pacman::p_load(shiny,
                scales,
                stringr,
                reshape2,
-               magrittr)
+               magrittr,
+               grDevices)
 
 
 source("functions.R")
@@ -21,6 +22,7 @@ server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
+    autoinvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -30,36 +32,33 @@ server <- function(input, output, session) {
         df_raw_sql <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
             message='Importing data from DataHub',
-            detail='Love and Kisses, Mathias',
+            detail='Kind regards, Mathias',
             value=NULL,
             style='old',
             {
                 # The actual data fetching
-                import_data_sql(model=input$Model)
+                import_data_sql_model(model=input$model)
             })
         return(df_raw_sql)
     })
-	Meteosat_sql <- reactive({
+	df_meteosat_sql_raw <- reactive({
         # To update every x minutes, there is this autoInvalidate
-      
-        input$refresh_data
+	    autoInvalidate_data_fetch_sql()
+	    input$refresh_data
+	    if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
 
-        Meteosat_sql <- withProgress(
+        df_meteosat_sql_raw <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
-            message='Importing meteosat data from DataHub',
-            detail='Love and Kisses, Luuk',
+            message='Importing MeteoSat data from DataHub',
+            detail='Kind regards, Luuk',
             value=NULL,
             style='old',
             {
                 # The actual data fetching
-                import_data_sql(model=input$Model)
+                import_data_sql_meteosat()
             })
-        return(df_raw_sql)
-    })
-    df_raw <- reactive({
-        # Import the raw data
-        df_raw <- import_data()
-        return(df_raw)
+        df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
+        return(df_meteosat_sql_raw)
     })
     df <- reactive({
         # From the raw data, get only the time that we want to show in the dashboard.
@@ -95,17 +94,17 @@ server <- function(input, output, session) {
         }
         return(compared_time)
     })
-	
+
 	model_observable <- reactive({
-		if (input$Model == 'GFS') {
+		if (input$model == 'GFS') {
 			return(conversion_list_GFS[[input$observable]])}
-		if (input$Model == 'HIRLAM') {
+		if (input$model == 'HIRLAM') {
 			return(conversion_list_HIRLAM[[input$observable]])}
 	})
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing");return(data.frame())}
+        if(nrow(df)==0) {print("Nothing in raw df");return(data.frame())}
         observable_fc <- model_observable()
         df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
@@ -146,29 +145,35 @@ server <- function(input, output, session) {
 
         return(df_metoffice)
     })
-	df_MeteoSat_raw <- reactive({
-		autoInvalidate_data_fetch_sql()
-        input$refresh_data
-		if (!input$Meteosat_rain & !input$Meteosat_clouds){return(data.frame())}
-		Meteosat_raw <- Meteosat_sql()
-		return(Meteosat_raw)
-	})
-	df_Meteosat_clouds <- reactive({
+
+    df_Meteosat_cot_raster <- reactive({
 		if (!input$Meteosat_clouds){return(data.frame())}
-        df_MeteoSat_raw <- df_MeteoSat_raw()
-        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
-        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
-        df_Meteosat_cot_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'cot'])
+	    df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_Meteosat_cot_raster <- raster_maker(df_meteosat_sql_raw, 'cot')
 		return(df_Meteosat_cot_raster)
     })
-    df_Meteosat_rain <- reactive({
+	df_Meteosat_precip_raster <- reactive({
         if (!input$Meteosat_rain){return(data.frame())}
-		    df_MeteoSat_raw <- df_MeteoSat_raw()
-        frame.MeteoSat = cbind.data.frame(df_MeteoSat_raw$lon, df_MeteoSat_raw$lat)
-        coordinates(frame.MeteoSat) <- ~df_MeteoSat_raw$lon + df_MeteoSat_raw$lat
-        df_Meteosat_precip_raster <- raster_maker(frame.MeteoSat, df_MeteoSat_raw[, 'precip'])
-		return(df_Meteosat_precip_raster)
+        df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_Meteosat_precip_raster <- raster_maker(df_meteosat_sql_raw, 'precip')
+        return(df_Meteosat_precip_raster)
     })
+	df_lines <- reactive({
+	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
+	                           'GFS'='gfs_air_pressure',
+	                           'HIRLAM'='hirlam_air_pressure')
+
+	    df <- df()
+	    # deduplicate df due to multiple observations at one location
+	    df <- df[!(df[, c('lon', 'lat', column_model)]) %>% duplicated, ]
+	    df <- df[do.call('order', df[c('lat', 'lon')]), ]
+	    lon <- df$lon %>% unique #%>% sort
+	    lat <- df$lat %>% unique #%>% sort
+	    z <- matrix(df[[column_model]], length(lon), byrow=FALSE)
+	    lines <- contourLines(lon, lat, z, levels=seq(948,1052,4))
+
+	    return(lines)
+	})
 
 
     # colorpalettes, domains and other boring stuff ----
@@ -249,40 +254,38 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	
-	observeEvent({df_Meteosat_rain(); input$Meteosat_rain}, {
-        df_Meteosat_rain <- df_Meteosat_rain()
-        leafletProxy('map') %>%
-            clearGroup('MeteoSat_precip')
-        if(df_Meteosat_rain %>% typeof == 'list') {
-            # Returned empty from function before
-            return()
-        }
-        leafletProxy('map') %>%
-            # clearGroup('contourlines') %>%
-            # clearGroup('HL') %>%
-            addRasterImage(log10(frame_MeteoSat_precip()),
-                               color=colors_MeteoSat_precip,
-                               opacity=0.45,
-                               group='MeteoSat_precip')
-    })
-	observeEvent({df_Meteosat_clouds(); input$Meteosat_clouds}, {
-        df_Meteosat_clouds <- df_Meteosat_clouds()
+	observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
+	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
             clearGroup('MeteoSat_cot')
-        if(df_Meteosat_clouds %>% typeof == 'list') {
+        if(df_Meteosat_cot_raster %>% typeof == 'list') {
             # Returned empty from function before
             return()
         }
         leafletProxy('map') %>%
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
-            addRasterImage(log10(frame_MeteoSat_cot()),
+            addRasterImage(log10(df_Meteosat_cot_raster),
                                color=colors_MeteoSat_cot,
                                opacity=0.45,
                                group='MeteoSat_cot')
     })
-	
+	observeEvent({df_Meteosat_precip_raster(); input$Meteosat_rain}, {
+	    df_Meteosat_precip_raster <- df_Meteosat_precip_raster()
+	    leafletProxy('map') %>%
+	        clearGroup('MeteoSat_precip')
+	    if(df_Meteosat_precip_raster %>% typeof == 'list') {
+	        # Returned empty from function before
+	        return()
+	    }
+	    leafletProxy('map') %>%
+	        # clearGroup('contourlines') %>%
+	        # clearGroup('HL') %>%
+	        addRasterImage(log10(df_Meteosat_precip_raster),
+	                       color=colors_MeteoSat_precip,
+	                       opacity=0.45,
+	                       group='MeteoSat_precip')
+	})
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
             clearGroup('KNMI_markers')
@@ -364,6 +367,26 @@ server <- function(input, output, session) {
                              opacity=1,
                              group='MetOffice_markers')
     })
+    observeEvent({input$wind_rt}, {
+        leafletProxy('map') %>%
+            clearGroup('wind_rt')
+        if (!input$wind_rt) {
+            # Done here!
+            return()
+        }
+
+        icons_size <- icons(
+            iconUrl=windparkiconurl_orange,
+            iconHeight = 20,
+            iconWidth = 20
+        )
+        leafletProxy('map') %>%
+            addMarkers(lat = wind_rt_location$lat,
+                       lng = wind_rt_location$lon,
+                       icon = icons_size,
+                       group="wind_rt")
+
+    })
     observeEvent({input$windparks_Eneco}, {
         leafletProxy('map') %>%
             clearGroup('eneco_windparks')
@@ -382,8 +405,8 @@ server <- function(input, output, session) {
                        lng = Windparks$lon,
                        icon = icons_size,
                        popup=paste0(Windparks$Location, "<br>",
-                                    "capacity: ", Windparks$max_MW," MW<br>",
-                                    plot(mtcars)),
+                                    "capacity: ", Windparks$max_MW," MW<br>"
+                       ),
                        group="eneco_windparks")
 
     })
@@ -410,7 +433,7 @@ server <- function(input, output, session) {
                        group="external_windparks")
 
     })
-    observeEvent({input$wind_direction}, {
+    observeEvent({df(); input$wind_direction}, {
         leafletProxy('map') %>%
             clearGroup('wind_direction')
         if (!input$wind_direction) {
@@ -419,8 +442,8 @@ server <- function(input, output, session) {
         }
         df <- df()
         df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
-        icon <- icons(wind_directions_location[if (input$Model == 'GFS'){df_wind$gfs_wind_direction} 
-											   else if (input$Model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
+        icon <- icons(wind_directions_location[if (input$model == 'GFS'){df_wind$gfs_wind_direction}
+											   else if (input$model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
                                                    divide_by(22.5) %>%
                                                    round(0) %>%
                                                    multiply_by(22.5) %>%
@@ -436,6 +459,73 @@ server <- function(input, output, session) {
                        group='wind_direction')
 
 
+    })
+    observeEvent({df_lines(); input$isobars}, {
+        leafletProxy('map') %>%
+            clearGroup('isobars')
+        print('Plotting lines')
+        if (!input$isobars) {return()}
+
+        df_lines <- df_lines()
+        for (line in df_lines) {
+            lng=line$x
+            lng = c(lng, rev(lng))
+            lat=line$y
+            lat = c(lat, rev(lat))
+            leafletProxy('map') %>%
+                addPolylines(lng=lng,
+                             lat=lat,
+                             fill=FALSE,
+                             color='black',
+                             weight=2,
+                             opacity=1,
+                             options=pathOptions(lineJoin = TRUE),
+                             group='isobars')
+
+            # Change this number to change the number of markers denoting the value
+            places <- (c(3) /6 * length(line$x)) %>% round
+            line <- line %>% data.frame
+            leafletProxy('map') %>%
+                addLabelOnlyMarkers(data=line[places, ],
+                                    lng=~x,
+                                    lat=~y,
+                                    label=~as.character(level),
+                                    labelOptions = labelOptions(noHide=T,
+                                                                direction='top',
+                                                                textOnly=T,
+                                                                textsize="18px"),
+                                    group='isobars')
+        }
+        df <- df()
+        column_model <- switch(isolate(input$model),
+                         'GFS'='gfs_air_pressure',
+                         'HIRLAM'='hirlam_air_pressure')
+        dataH <- df[(df[[column_model]] %>% max) == df[[column_model]], ]
+        dataH <- dataH[sample(nrow(dataH), 1), ]
+        dataH$text <- 'H'
+        dataL <- df[(df[[column_model]] %>% min) == df[[column_model]], ]
+        dataL <- dataL[sample(nrow(dataL), 1), ]
+        dataL$text <- 'L'
+        leafletProxy('map') %>%
+            addLabelOnlyMarkers(data=dataH,
+                                lng=~lon,
+                                lat=~lat,
+                                label=~as.character(text),
+                                labelOptions = labelOptions(noHide = T,
+                                                            direction = 'top',
+                                                            textOnly = T,
+                                                            textsize="50px"),
+                                group='isobars')
+        leafletProxy('map') %>%
+            addLabelOnlyMarkers(data=dataL,
+                                lng=~lon,
+                                lat=~lat,
+                                label=~as.character(text),
+                                labelOptions = labelOptions(noHide = T,
+                                                            direction = 'top',
+                                                            textOnly = T,
+                                                            textsize="50px"),
+                                group='isobars')
     })
 
     observeEvent({input$map_marker_click}, {
@@ -505,6 +595,9 @@ server <- function(input, output, session) {
                                       y=conversion_list_HIRLAM[[input$observable]]),
                            color='green')
         p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        if (input$observable == 'Windspeed') {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
         return(p)
     })
     output$metoffice_history_plot <- renderPlot({
@@ -550,6 +643,9 @@ server <- function(input, output, session) {
                                       y=conversion_list_HIRLAM[[input$observable]]),
                            color='green')
         p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        if (input$observable == 'Windspeed') {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
         return(p)
     })
 

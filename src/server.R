@@ -36,7 +36,7 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql_model(model=input$Model)
+                import_data_sql_model(model=input$model)
             })
         return(df_raw_sql)
     })
@@ -57,7 +57,6 @@ server <- function(input, output, session) {
                 import_data_sql_meteosat()
             })
         df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
-        df_meteosat_sql_raw$precip <- df_meteosat_sql_raw$precip + rexp(nrow(df_meteosat_sql_raw), 100)
         return(df_meteosat_sql_raw)
     })
     df_raw <- reactive({
@@ -101,9 +100,9 @@ server <- function(input, output, session) {
     })
 
 	model_observable <- reactive({
-		if (input$Model == 'GFS') {
+		if (input$model == 'GFS') {
 			return(conversion_list_GFS[[input$observable]])}
-		if (input$Model == 'HIRLAM') {
+		if (input$model == 'HIRLAM') {
 			return(conversion_list_HIRLAM[[input$observable]])}
 	})
     # Dataframes to be used in the dashboard ----
@@ -412,8 +411,8 @@ server <- function(input, output, session) {
         }
         df <- df()
         df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
-        icon <- icons(wind_directions_location[if (input$Model == 'GFS'){df_wind$gfs_wind_direction}
-											   else if (input$Model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
+        icon <- icons(wind_directions_location[if (input$model == 'GFS'){df_wind$gfs_wind_direction}
+											   else if (input$model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
                                                    divide_by(22.5) %>%
                                                    round(0) %>%
                                                    multiply_by(22.5) %>%

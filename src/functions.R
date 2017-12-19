@@ -147,6 +147,27 @@ get_datetimes_history <- function() {
     return(list(datetime_begin=datetime_begin, datetime_end=datetime_end, datetime_apx=datetime_apx))
 }
 
+get_historic_observation_data <- function(click, group, datetimes, name) {
+    stmt <- switch(group,
+                   knmi=sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s'",
+                                name,
+                                datetimes$datetime_begin),
+                   owm=sprintf("SELECT * FROM owm_data_source WHERE name = '%s' AND datetime >= '%s'",
+                               name,
+                               datetimes$datetime_begin),
+                   metoffice=sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
+                                     name,
+                                     datetimes$datetime_begin,
+                                     datetimes$datetime_end)
+    )
+    df_observation_history <- run.query(stmt)$result
+    df_observation_history$datetime <- df_observation_history$datetime %>%
+        as.POSIXct() %>%
+        with_tz('Europe/Amsterdam')
+
+    return(df_observation_history)
+}
+
 get_gfs_history <- function(lat, lon, datetimes) {
     # Construct the stmt by filling in the blanks in the base stmt
     stmt <- sprintf(stmt_gfs_history %>% strwrap(width=10000, simplify=TRUE),

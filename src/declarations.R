@@ -33,10 +33,19 @@ conversion_list_KNMI_plot <<- list("Windspeed"="ff",
                                    "Temperature"="ta",
                                    "Air pressure"="pp",
                                    "Radiation"="qg")
+conversion_list_OWM_plot <<- list("Windspeed"="wind_speed",
+                                   "Temperature"="main_temp",
+                                   "Air pressure"="main_pressure",
+                                   "Radiation"="main_pressure") # Not available
 conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
                                         "Temperature"="temperature",
                                         "Air pressure"="pressure",
                                         "Radiation"="pressure") # Not available
+
+conversion_list_observations_plot <<- list("knmi"=conversion_list_KNMI_plot,
+                                           "owm"=conversion_list_OWM_plot,
+                                           "meteosat"=conversion_list_metoffice_plot
+)
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
 Windparks <- Windparks_filename %>% read.csv %>% data.frame
@@ -47,7 +56,7 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 # Windparks icons
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
-windparkiconurl_orange <- "../data/Windparks/wfarm_orange.png"
+windparkiconurl_wind_rt <- "../data/Windparks/wfarm_orange.png"
 
 # Wind direction icons
 directions <- seq(0, 360, 22.5) %>% round(0)

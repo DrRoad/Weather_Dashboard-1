@@ -16,7 +16,8 @@ source("functions.R")
 source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,
-                     metoffice_station_history=NULL)
+                     metoffice_station_history=NULL,
+                     click=NULL)
 
 server <- function(input, output, session) {
     # autoInvalidates ----
@@ -376,7 +377,7 @@ server <- function(input, output, session) {
         }
 
         icons_size <- icons(
-            iconUrl=windparkiconurl_orange,
+            iconUrl=windparkiconurl_wind_rt,
             iconHeight = 20,
             iconWidth = 20
         )
@@ -545,7 +546,9 @@ server <- function(input, output, session) {
             rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
                                                               df_metoffice$metoffice_lon == click$lng, 'metoffice_name']
         }
+        rv$click <<- click
     })
+
 
     # Complementary stuff ----
     output$compared_time <- renderText({
@@ -553,6 +556,41 @@ server <- function(input, output, session) {
             with_tz('Europe/Amsterdam') %>%
             strftime("%d %b %H:%M", tz='Europe/Amsterdam')
     })
+    output$observation_history_plot <- renderPlot({
+        # do checks if the click is empty/NULL
+        click <- rv$click
+        if(is.null(click)) {
+            # No plot necessary
+            return()
+        }
+        # Datetime of begin/end of the day
+        datetimes <- get_datetimes_history()
+        # Get df to select the right stationname
+        df <- isolate(df())
+        # group can either be knmi, owm or metoffice
+        group <- click$group %>% str_split('_') %>% unlist %>% head(1) %>% tolower
+        lat_column <- sprintf("%s_lat", group)
+        lon_column <- sprintf("%s_lon", group)
+        name_column <- sprintf("%s_name", group)
+        name <- df[(df[[lat_column]] == click$lat) &
+                       (df[[lon_column]] == click$lon),
+                   name_column]
+        df_observation_history <- get_historic_observation_data(click, group, datetimes, name)
+
+        p <- ggplot()
+        p <- p + geom_line(data=df_observation_history,
+                           aes_string(x='datetime',
+                                      y=conversion_list_observations_plot[[group]][[input$observable]]),
+                           color='red')
+
+        p <- p + ggtitle(name) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
+        if (input$observable == 'Windspeed') {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
+        return(p)
+    })
+
+
     output$knmi_history_plot <- renderPlot({
         if(is.null(rv$knmi_station_history)) {
             # No plot necessary

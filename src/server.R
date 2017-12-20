@@ -16,7 +16,8 @@ source("functions.R")
 source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,
-                     metoffice_station_history=NULL)
+                     metoffice_station_history=NULL,
+                     click=NULL)
 
 server <- function(input, output, session) {
     # autoInvalidates ----
@@ -145,7 +146,6 @@ server <- function(input, output, session) {
 
         return(df_metoffice)
     })
-
     df_Meteosat_cot_raster <- reactive({
 		if (!input$Meteosat_clouds){return(data.frame())}
 	    df_meteosat_sql_raw <- df_meteosat_sql_raw()
@@ -159,6 +159,7 @@ server <- function(input, output, session) {
         return(df_Meteosat_precip_raster)
     })
 	df_lines <- reactive({
+	    if(!input$isobars) {return()}
 	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
 	                           'GFS'='gfs_air_pressure',
 	                           'HIRLAM'='hirlam_air_pressure')
@@ -376,7 +377,7 @@ server <- function(input, output, session) {
         }
 
         icons_size <- icons(
-            iconUrl=windparkiconurl_orange,
+            iconUrl=windparkiconurl_wind_rt,
             iconHeight = 20,
             iconWidth = 20
         )
@@ -530,21 +531,10 @@ server <- function(input, output, session) {
 
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
-        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers')
+        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
         if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
-        if (click$group == 'KNMI_markers') {
-            # Get the stationname from the current df_knmi
-            # And it should be in there, otherwise it cannot be shown/clicked
-            df_knmi <- df_knmi()
-            # Change it in entire scope, so the next observeEvent is triggered by the change you do here
-            rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat &
-                                                    df_knmi$knmi_lon == click$lng, 'knmi_name']
-        } else if (click$group == 'MetOffice_markers') {
-            # Same as above, but then for metoffice
-            df_metoffice <- df_metoffice()
-            rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
-                                                              df_metoffice$metoffice_lon == click$lng, 'metoffice_name']
-        }
+        # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
+        rv$click <<- click
     })
 
     # Complementary stuff ----
@@ -553,6 +543,33 @@ server <- function(input, output, session) {
             with_tz('Europe/Amsterdam') %>%
             strftime("%d %b %H:%M", tz='Europe/Amsterdam')
     })
+    output$observation_history_plot <- renderPlot({
+        # do checks if the click is empty/NULL
+        click <- rv$click
+        if(is.null(click)) {
+            # No plot necessary
+            return()
+        }
+
+        # Datetime of begin/end of the day
+        datetimes <- get_datetimes_history()
+        # Get df to select the right stationname
+        df <- isolate(df())
+
+        p <- withProgress(
+            # This part takes care of showing the notifcation when data is gathered and picture created
+            message='Creating history',
+            detail='Yours sincerely, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The picture creation
+                create_observation_history_plot(click, datetimes, df, input$observable)
+            })
+        return(p)
+    })
+
+
     output$knmi_history_plot <- renderPlot({
         if(is.null(rv$knmi_station_history)) {
             # No plot necessary

@@ -33,10 +33,19 @@ conversion_list_KNMI_plot <<- list("Windspeed"="ff",
                                    "Temperature"="ta",
                                    "Air pressure"="pp",
                                    "Radiation"="qg")
+conversion_list_OWM_plot <<- list("Windspeed"="wind_speed",
+                                   "Temperature"="main_temp",
+                                   "Air pressure"="main_pressure",
+                                   "Radiation"="main_pressure") # Not available
 conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
                                         "Temperature"="temperature",
                                         "Air pressure"="pressure",
                                         "Radiation"="pressure") # Not available
+
+conversion_list_observations_plot <<- list("knmi"=conversion_list_KNMI_plot,
+                                           "owm"=conversion_list_OWM_plot,
+                                           "metoffice"=conversion_list_metoffice_plot
+)
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
 Windparks <- Windparks_filename %>% read.csv %>% data.frame
@@ -47,7 +56,7 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 # Windparks icons
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
-windparkiconurl_orange <- "../data/Windparks/wfarm_orange.png"
+windparkiconurl_wind_rt <- "../data/Windparks/wfarm_orange.png"
 
 # Wind direction icons
 directions <- seq(0, 360, 22.5) %>% round(0)
@@ -68,6 +77,7 @@ coloring_IGCC <- c("DE" = "white",
                    "CZ" = "khaki")
 
 # Query statements ----
+basetime <- as.POSIXct('2017-11-29 00:00:00')
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
                             gfs.2_metre_temperature_level_2 as gfs_temp,
                             gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
@@ -87,13 +97,14 @@ stmt_gfs_history_apx <- "SELECT datetime,
                                 downward_short_wave_radiation_flux_level_0 as gfs_radiation,
                                 surface_pressure_level_0 as gfs_air_pressure
 FROM weatherforecast.gfs_data_source
-WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
-AND hours_ahead >= 17
-AND hours_ahead <= 41
-AND lat = %.2f
-AND lon = %.2f
-AND model_date = '%s'
-AND model_run = 6"
+WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+      partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+      hours_ahead >= 17 AND
+      hours_ahead <= 41 AND
+      lat = %.2f AND
+      lon = %.2f AND
+      model_date = '%s' AND
+      model_run = 6"
 
 stmt_hirlam_history <- "SELECT hirlam.datetime as datetime,
                                hirlam.2_metre_temperature - 273.15 as hirlam_temp,
@@ -104,9 +115,29 @@ FROM hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
     FROM hirlam_data_source
-    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND lat = %.2f AND lon = %.2f
+    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND
+          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND
+          lat = %.2f AND
+          lon = %.2f
     GROUP BY datetime, lat, lon
 ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
+
+stmt_hirlam_history_2 <- "SELECT hirlam.datetime as datetime,
+                                 hirlam.2_metre_temperature - 273.15 as hirlam_temp,
+                                 hirlam.10_metre_wind_speed as hirlam_wind_speed,
+                                 hirlam.global_radiation_flux as hirlam_radiation,
+                                 hirlam.pressure as hirlam_air_pressure
+FROM hirlam_data_source hirlam INNER JOIN
+(
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM hirlam_data_source
+    WHERE (partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 OR
+          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72)  AND
+          lat = %.2f AND
+          lon = %.2f
+    GROUP BY datetime, lat, lon
+    ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
+
 
 stmt_meteosat <- "SELECT * FROM weatherforecast.meteosat_data_source
 WHERE partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48

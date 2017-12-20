@@ -114,8 +114,8 @@ FROM hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
     FROM hirlam_data_source
-    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
-          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432  AND
+    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND
+          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND
           lat = %.2f AND
           lon = %.2f
     GROUP BY datetime, lat, lon

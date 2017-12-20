@@ -189,7 +189,6 @@ get_hirlam_history <- function(lat, lon, datetimes) {
                   datetimes$datetime_end,
                   lat,
                   lon)
-  print(stmt)
   df_hirlam_history_plot <- run.query(stmt)$result
   df_hirlam_history_plot$datetime <- df_hirlam_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
   return(df_hirlam_history_plot)
@@ -207,4 +206,54 @@ get_gfs_history_apx <- function(lat, lon, datetimes) {
     return(df_gfs_history_plot_apx)
 }
 
+create_observation_history_plot <- function(click, datetimes, df, observable) {
+    # group can either be knmi, owm or metoffice
+    group <- click$group %>% str_split('_') %>% unlist %>% head(1) %>% tolower
 
+    lat_column <- sprintf("%s_lat", group)
+    lon_column <- sprintf("%s_lon", group)
+    name_column <- sprintf("%s_name", group)
+
+
+
+    df <- df[!is.na(df[[name_column]]), ]
+    name <- df[(df[[lat_column]] == click$lat) &
+                   (df[[lon_column]] == click$lng),
+               name_column]
+
+    df_observation_history <- get_historic_observation_data(click, group, datetimes, name)
+
+    p <- ggplot()
+    p <- p + geom_line(data=df_observation_history,
+                       aes_string(x='datetime',
+                                  y=conversion_list_observations_plot[[group]][[observable]]),
+                       color='red')
+
+    # Determine the lat/lon to join observations with GFS
+    gfs_lat_plot <- round(click$lat / 0.25, 0) * 0.25
+    gfs_lon_plot <- round(click$lng / 0.25, 0) * 0.25
+    df_gfs_history_plot <- get_gfs_history(gfs_lat_plot, gfs_lon_plot, datetimes)
+    p <- p + geom_line(data=df_gfs_history_plot,
+                       aes_string(x='datetime',
+                                  y=conversion_list_GFS[[observable]]),
+                       color='black')
+    df_gfs_history_plot_apx <- get_gfs_history_apx(gfs_lat_plot, gfs_lon_plot, datetimes)
+    p <- p + geom_line(data=df_gfs_history_plot_apx,
+                       aes_string(x='datetime',
+                                  y=conversion_list_GFS[[observable]]),
+                       color='black',
+                       linetype='dashed')
+    hirlam_lat_plot <- round(click$lat / 0.1, 0) * 0.1
+    hirlam_lon_plot <- round(click$lng / 0.1, 0) * 0.1
+    df_hirlam_history_plot <- get_hirlam_history(hirlam_lat_plot, hirlam_lon_plot, datetimes)
+    p <- p + geom_line(data=df_hirlam_history_plot,
+                       aes_string(x='datetime',
+                                  y=conversion_list_HIRLAM[[observable]]),
+                       color='green')
+
+    p <- p + ggtitle(name) + ylab(observable) + scale_x_datetime(expand=c(0,0))
+    if (observable == 'Windspeed') {
+        p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+    }
+    return(p)
+}

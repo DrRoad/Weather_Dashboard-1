@@ -534,10 +534,8 @@ server <- function(input, output, session) {
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
         if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
         # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
-
         rv$click <<- click
     })
-
 
     # Complementary stuff ----
     output$compared_time <- renderText({
@@ -555,56 +553,19 @@ server <- function(input, output, session) {
 
         # Datetime of begin/end of the day
         datetimes <- get_datetimes_history()
-
-        # group can either be knmi, owm or metoffice
-        group <- click$group %>% str_split('_') %>% unlist %>% head(1) %>% tolower
-
-        lat_column <- sprintf("%s_lat", group)
-        lon_column <- sprintf("%s_lon", group)
-        name_column <- sprintf("%s_name", group)
-
         # Get df to select the right stationname
         df <- isolate(df())
-        df <- df[!is.na(df[[name_column]]), ]
-        name <- df[(df[[lat_column]] == click$lat) &
-                       (df[[lon_column]] == click$lng),
-                   name_column]
 
-        df_observation_history <- get_historic_observation_data(click, group, datetimes, name)
-
-        p <- ggplot()
-        p <- p + geom_line(data=df_observation_history,
-                           aes_string(x='datetime',
-                                      y=conversion_list_observations_plot[[group]][[input$observable]]),
-                           color='red')
-
-        # Determine the lat/lon to join observations with GFS
-        gfs_lat_plot <- round(click$lat / 0.25, 0) * 0.25
-        gfs_lon_plot <- round(click$lng / 0.25, 0) * 0.25
-        df_gfs_history_plot <- get_gfs_history(gfs_lat_plot, gfs_lon_plot, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black')
-        df_gfs_history_plot_apx <- get_gfs_history_apx(gfs_lat_plot, gfs_lon_plot, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot_apx,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black',
-                           linetype='dashed')
-        hirlam_lat_plot <- round(click$lat / 0.1, 0) * 0.1
-        hirlam_lon_plot <- round(click$lng / 0.1, 0) * 0.1
-        df_hirlam_history_plot <- get_hirlam_history(hirlam_lat_plot, hirlam_lon_plot, datetimes)
-        print(df_hirlam_history_plot)
-        p <- p + geom_line(data=df_hirlam_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_HIRLAM[[input$observable]]),
-                           color='green')
-
-        p <- p + ggtitle(name) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
-        if (input$observable == 'Windspeed') {
-            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
-        }
+        p <- withProgress(
+            # This part takes care of showing the notifcation when data is gathered and picture created
+            message='Creating history',
+            detail='Yours sincerely, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The picture creation
+                create_observation_history_plot(click, datetimes, df, input$observable)
+            })
         return(p)
     })
 

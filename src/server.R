@@ -11,7 +11,6 @@ pacman::p_load(shiny,
                magrittr,
                grDevices)
 
-
 source("functions.R")
 source("declarations.R")
 
@@ -568,104 +567,6 @@ server <- function(input, output, session) {
             })
         return(p)
     })
-
-
-    output$knmi_history_plot <- renderPlot({
-        if(is.null(rv$knmi_station_history)) {
-            # No plot necessary
-            return()
-        }
-        # Datetime of begin/end of the day
-        datetimes <- get_datetimes_history()
-        # Get all rows for the specific KNMI station since beginning of this day
-        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s'",
-                        rv$knmi_station_history,
-                        datetimes$datetime_begin
-        )
-        df_knmi_history_plot <- run.query(stmt)$result
-        # Make it datetime, and Europe/Amsterdam
-        df_knmi_history_plot$datetime <- df_knmi_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
-        p <- ggplot()
-        p <- p + geom_line(data=df_knmi_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_KNMI_plot[[input$observable]]),
-                           color='red')
-        # Determine the lat/lon to join KNMI on with GFS
-        knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.25, 0) * 0.25
-        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        df_gfs_history_plot <- get_gfs_history(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black')
-        df_gfs_history_plot_apx <- get_gfs_history_apx(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot_apx,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black',
-                           linetype='dashed')
-	      knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.1, 0) * 0.1
-        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.1, 0) * 0.1
-        df_hirlam_history_plot <- get_hirlam_history(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_hirlam_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_HIRLAM[[input$observable]]),
-                           color='green')
-        p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
-        if (input$observable == 'Windspeed') {
-            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
-        }
-        return(p)
-    })
-    output$metoffice_history_plot <- renderPlot({
-        if(is.null(rv$metoffice_station_history)) {
-            # No plot necessary
-            return()
-        }
-        # Datetime of begin/end of the day
-        datetimes <- get_datetimes_history()
-        # Get all rows for the specific metoffice station since beginning of this day
-        stmt <- sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
-                        rv$metoffice_station_history,
-                        datetimes$datetime_begin,
-                        datetimes$datetime_end
-        )
-        df_metoffice_history_plot <- run.query(stmt)$result
-        # Make it datetime, and Europe/Amsterdam
-        df_metoffice_history_plot$datetime <- df_metoffice_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
-        p <- ggplot()
-        p <- p + geom_line(data=df_metoffice_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_metoffice_plot[[input$observable]]),
-                           color='red')
-        # Determine the lat/lon to join metoffice on with GFS
-        metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.25, 0) * 0.25
-        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        df_gfs_history_plot <- get_gfs_history(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black')
-        df_gfs_history_plot_apx <- get_gfs_history_apx(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot_apx,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black',
-                           linetype='dashed')
-		metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.1, 0) * 0.1
-        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.1, 0) * 0.1
-        df_hirlam_history_plot <- get_hirlam_history(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_hirlam_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_HIRLAM[[input$observable]]),
-                           color='green')
-        p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
-        if (input$observable == 'Windspeed') {
-            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
-        }
-        return(p)
-    })
-
     # IGCC ----
     IGCC_data <- reactive({
         autoInvalidate_IGCC()

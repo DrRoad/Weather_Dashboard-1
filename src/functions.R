@@ -160,9 +160,7 @@ get_historic_observation_data <- function(click, group, datetimes, name) {
                                      datetimes$datetime_begin,
                                      datetimes$datetime_end)
     )
-    # print(stmt)
     df_observation_history <- run.query(stmt)$result
-    df_observation_history %>% head %>% print
     df_observation_history$datetime <- df_observation_history$datetime %>%
         as.POSIXct() %>%
         with_tz('Europe/Amsterdam')

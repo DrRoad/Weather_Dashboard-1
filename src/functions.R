@@ -190,6 +190,16 @@ get_hirlam_history <- function(lat, lon, datetimes) {
                   lat,
                   lon)
   df_hirlam_history_plot <- run.query(stmt)$result
+  if (df_hirlam_history_plot %>% nrow == 0) {
+      print("Taking second HIRLAM")
+      stmt <- sprintf(stmt_hirlam_history_2 %>% strwrap(width=10000, simplify=TRUE),
+                      datetimes$datetime_begin,
+                      # datetimes$datetime_end,datetimes$datetime_begin,
+                      datetimes$datetime_end,
+                      lat,
+                      lon)
+      df_hirlam_history_plot <- run.query(stmt)$result
+  }
   df_hirlam_history_plot$datetime <- df_hirlam_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
   return(df_hirlam_history_plot)
 }
@@ -213,8 +223,6 @@ create_observation_history_plot <- function(click, datetimes, df, observable) {
     lat_column <- sprintf("%s_lat", group)
     lon_column <- sprintf("%s_lon", group)
     name_column <- sprintf("%s_name", group)
-
-
 
     df <- df[!is.na(df[[name_column]]), ]
     name <- df[(df[[lat_column]] == click$lat) &

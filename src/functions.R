@@ -160,7 +160,9 @@ get_historic_observation_data <- function(click, group, datetimes, name) {
                                      datetimes$datetime_begin,
                                      datetimes$datetime_end)
     )
+    # print(stmt)
     df_observation_history <- run.query(stmt)$result
+    df_observation_history %>% head %>% print
     df_observation_history$datetime <- df_observation_history$datetime %>%
         as.POSIXct() %>%
         with_tz('Europe/Amsterdam')
@@ -187,6 +189,7 @@ get_hirlam_history <- function(lat, lon, datetimes) {
                   datetimes$datetime_end,
                   lat,
                   lon)
+  print(stmt)
   df_hirlam_history_plot <- run.query(stmt)$result
   df_hirlam_history_plot$datetime <- df_hirlam_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
   return(df_hirlam_history_plot)

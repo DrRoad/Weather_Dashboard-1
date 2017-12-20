@@ -146,7 +146,6 @@ server <- function(input, output, session) {
 
         return(df_metoffice)
     })
-
     df_Meteosat_cot_raster <- reactive({
 		if (!input$Meteosat_clouds){return(data.frame())}
 	    df_meteosat_sql_raw <- df_meteosat_sql_raw()
@@ -160,6 +159,7 @@ server <- function(input, output, session) {
         return(df_Meteosat_precip_raster)
     })
 	df_lines <- reactive({
+	    if(!input$isobars) {return()}
 	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
 	                           'GFS'='gfs_air_pressure',
 	                           'HIRLAM'='hirlam_air_pressure')
@@ -531,21 +531,10 @@ server <- function(input, output, session) {
 
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
-        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers')
+        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
         if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
-        if (click$group == 'KNMI_markers') {
-            # Get the stationname from the current df_knmi
-            # And it should be in there, otherwise it cannot be shown/clicked
-            df_knmi <- df_knmi()
-            # Change it in entire scope, so the next observeEvent is triggered by the change you do here
-            rv$knmi_station_history <<- df_knmi[df_knmi$knmi_lat == click$lat &
-                                                    df_knmi$knmi_lon == click$lng, 'knmi_name']
-        } else if (click$group == 'MetOffice_markers') {
-            # Same as above, but then for metoffice
-            df_metoffice <- df_metoffice()
-            rv$metoffice_station_history <<- df_metoffice[df_metoffice$metoffice_lat == click$lat &
-                                                              df_metoffice$metoffice_lon == click$lng, 'metoffice_name']
-        }
+        # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
+
         rv$click <<- click
     })
 
@@ -563,18 +552,24 @@ server <- function(input, output, session) {
             # No plot necessary
             return()
         }
+
         # Datetime of begin/end of the day
         datetimes <- get_datetimes_history()
-        # Get df to select the right stationname
-        df <- isolate(df())
+
         # group can either be knmi, owm or metoffice
         group <- click$group %>% str_split('_') %>% unlist %>% head(1) %>% tolower
+
         lat_column <- sprintf("%s_lat", group)
         lon_column <- sprintf("%s_lon", group)
         name_column <- sprintf("%s_name", group)
+
+        # Get df to select the right stationname
+        df <- isolate(df())
+        df <- df[!is.na(df[[name_column]]), ]
         name <- df[(df[[lat_column]] == click$lat) &
-                       (df[[lon_column]] == click$lon),
+                       (df[[lon_column]] == click$lng),
                    name_column]
+
         df_observation_history <- get_historic_observation_data(click, group, datetimes, name)
 
         p <- ggplot()
@@ -582,6 +577,29 @@ server <- function(input, output, session) {
                            aes_string(x='datetime',
                                       y=conversion_list_observations_plot[[group]][[input$observable]]),
                            color='red')
+
+        # Determine the lat/lon to join observations with GFS
+        gfs_lat_plot <- round(click$lat / 0.25, 0) * 0.25
+        gfs_lon_plot <- round(click$lng / 0.25, 0) * 0.25
+        df_gfs_history_plot <- get_gfs_history(gfs_lat_plot, gfs_lon_plot, datetimes)
+        p <- p + geom_line(data=df_gfs_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black')
+        df_gfs_history_plot_apx <- get_gfs_history_apx(gfs_lat_plot, gfs_lon_plot, datetimes)
+        p <- p + geom_line(data=df_gfs_history_plot_apx,
+                           aes_string(x='datetime',
+                                      y=conversion_list_GFS[[input$observable]]),
+                           color='black',
+                           linetype='dashed')
+        hirlam_lat_plot <- round(click$lat / 0.1, 0) * 0.1
+        hirlam_lon_plot <- round(click$lng / 0.1, 0) * 0.1
+        df_hirlam_history_plot <- get_hirlam_history(hirlam_lat_plot, hirlam_lon_plot, datetimes)
+        print(df_hirlam_history_plot)
+        p <- p + geom_line(data=df_hirlam_history_plot,
+                           aes_string(x='datetime',
+                                      y=conversion_list_HIRLAM[[input$observable]]),
+                           color='green')
 
         p <- p + ggtitle(name) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
         if (input$observable == 'Windspeed') {

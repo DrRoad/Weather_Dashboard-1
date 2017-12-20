@@ -44,7 +44,7 @@ conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
 
 conversion_list_observations_plot <<- list("knmi"=conversion_list_KNMI_plot,
                                            "owm"=conversion_list_OWM_plot,
-                                           "meteosat"=conversion_list_metoffice_plot
+                                           "metoffice"=conversion_list_metoffice_plot
 )
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
@@ -96,13 +96,14 @@ stmt_gfs_history_apx <- "SELECT datetime,
                                 downward_short_wave_radiation_flux_level_0 as gfs_radiation,
                                 surface_pressure_level_0 as gfs_air_pressure
 FROM weatherforecast.gfs_data_source
-WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
-AND hours_ahead >= 17
-AND hours_ahead <= 41
-AND lat = %.2f
-AND lon = %.2f
-AND model_date = '%s'
-AND model_run = 6"
+WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+      partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+      hours_ahead >= 17 AND
+      hours_ahead <= 41 AND
+      lat = %.2f AND
+      lon = %.2f AND
+      model_date = '%s' AND
+      model_run = 6"
 
 stmt_hirlam_history <- "SELECT hirlam.datetime as datetime,
                                hirlam.2_metre_temperature - 273.15 as hirlam_temp,
@@ -113,7 +114,10 @@ FROM hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
     FROM hirlam_data_source
-    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND lat = %.2f AND lon = %.2f
+    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432  AND
+          lat = %.2f AND
+          lon = %.2f
     GROUP BY datetime, lat, lon
 ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
 

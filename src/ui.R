@@ -232,6 +232,19 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    height="250",
                                                                    width="90%")
                                                     )
+                                                ),
+                                                box(title='Wind RT',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    collapsed=FALSE,
+                                                    color='black',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('wind_rt_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
                                                 )
                                          )
                                      )

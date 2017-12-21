@@ -16,7 +16,8 @@ source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL,
-                     click=NULL)
+                     click=NULL,
+                     click_wind_rt=NULL)
 
 server <- function(input, output, session) {
     # autoInvalidates ----
@@ -386,7 +387,7 @@ server <- function(input, output, session) {
                        lng = wind_rt_location$lon,
                        icon = icons_size,
                        group="wind_rt",
-                       popup=paste0("aggregateId = ", wind_rt_location$aggregateId, wind_rt_location$breezeid))
+                       layerId=wind_rt_location$aggregateId)
 
     })
     observeEvent({input$windparks_Eneco}, {
@@ -534,9 +535,13 @@ server <- function(input, output, session) {
         click <- input$map_marker_click
         print(click)
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
-        if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
-        # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
-        rv$click <<- click
+        if(click$group %in% groups_that_can_click) {
+            # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
+            rv$click <<- click
+        }
+        if (click$group == "wind_rt") {
+            rv$click_wind_rt <<- click
+        }
     })
 
     # Complementary stuff ----
@@ -568,6 +573,23 @@ server <- function(input, output, session) {
                 # The picture creation
                 create_observation_history_plot(click, datetimes, df, input$observable)
             })
+        return(p)
+    })
+    output$wind_rt_plot <- renderPlot({
+        click <- rv$click_wind_rt
+        if(is.null(click)) {
+            # No plot necessary
+            return()
+        }
+        stmt <- sprintf("SELECT * from breeze.breeze_power_data_source WHERE aggregateId = %s",
+                        click$id)
+        df <- run.query(stmt)$result
+        df$datetime <- df$datetime %>%
+            as.POSIXct() %>%
+            with_tz('Europe/Amsterdam')
+        df %>% head %>% print
+
+        p <- ggplot() + geom_line(data=df, aes(x=datetime, y=datasignalValue))
         return(p)
     })
     # IGCC ----

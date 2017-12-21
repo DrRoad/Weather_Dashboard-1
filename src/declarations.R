@@ -63,9 +63,20 @@ directions <- seq(0, 360, 22.5) %>% round(0)
 wind_directions_location <- c("../data/arrows/arrow_icon_%03d.png" %>% sprintf(directions))
 names(wind_directions_location) <- directions
 
-wind_rt_file_location <- '../data/locations_wind.csv'
-wind_rt_location <- wind_rt_file_location %>% read.csv
-wind_rt_location <- wind_rt_location[!wind_rt_location$lat %>% is.na, ]
+wind_rt_location <- run.query("SELECT * FROM (SELECT
+    longitude as lon,
+    latitude as lat,
+    aggregateId
+FROM
+    breeze.breeze_power_data_source
+GROUP BY
+    longitude,
+    latitude)
+breeze
+INNER JOIN (
+    SELECT * FROM mapping.pl_breeze_mapping) mapping
+ON breeze.aggregateid = mapping.breezeId
+")$result
 
 coloring_IGCC <- c("DE" = "white",
                    "NL" = "orange",
@@ -192,3 +203,22 @@ cpalet_MeteoSat_map <- list(
                       na.color="transparent",
                       bins=20)
 )
+
+stmt_gfs_modelruns <- "SELECT
+    model_date,
+    model_run,
+    datetime,
+    lat,
+    lon,
+    2_metre_temperature_level_2 as gfs_temp,
+    10_metre_wind_speed_level_10 as gfs_wind_speed,
+    downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+    surface_pressure_level_0 as gfs_air_pressure
+FROM
+    gfs_data_source
+WHERE
+    partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+    AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+ORDER BY
+    model_date,
+    model_run"

@@ -365,7 +365,8 @@ server <- function(input, output, session) {
                              color='white',
                              fillOpacity=1,
                              opacity=1,
-                             group='MetOffice_markers')
+                             group='MetOffice_markers',
+                             layerId=df_metoffice$metoffice_name)
     })
     observeEvent({input$wind_rt}, {
         leafletProxy('map') %>%
@@ -384,7 +385,8 @@ server <- function(input, output, session) {
             addMarkers(lat = wind_rt_location$lat,
                        lng = wind_rt_location$lon,
                        icon = icons_size,
-                       group="wind_rt")
+                       group="wind_rt",
+                       popup=paste0("aggregateId = ", wind_rt_location$aggregateId, wind_rt_location$breezeid))
 
     })
     observeEvent({input$windparks_Eneco}, {
@@ -530,6 +532,7 @@ server <- function(input, output, session) {
 
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
+        print(click)
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
         if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
         # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts

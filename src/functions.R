@@ -1,25 +1,3 @@
-# import_data_sql <- function(max_hours_back = 4, max_hours_forward=1,model) {
-
-    # # Min and Max datetime for the query
-    # minimal_datetime <- (Sys.time() %>%
-                             # trunc('hour') - max_hours_back * 60 * 60) %>%
-        # strftime("%Y-%m-%d %H:%M:%S")
-    # maximal_datetime <- (Sys.time() %>%
-                             # trunc('hour') + max_hours_forward * 60 * 60) %>%
-        # strftime("%Y-%m-%d %H:%M:%S")
-    # # basically, give everything between min and max datetime
-    # stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
-                    # (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) end_value,
-                    # (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
-                    # (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weather_sources_view_hirlam;",
-                    # minimal_datetime,
-                    # maximal_datetime,
-                    # minimal_datetime,
-                    # maximal_datetime)
-    # a = run.query(stmt)
-    # return(a$result)
-# }
-
 import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) {
 
     # Min and Max datetime for the query
@@ -67,6 +45,25 @@ import_data_sql_meteosat <- function(max_hours_back=1, max_hours_forward=1) {
                     maximal_datetime)
 
     a <- run.query(stmt)
+    return(a$result)
+}
+
+import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_forward=1) {
+
+    # Min and Max datetime for the query
+    minimal_datetime <- (Sys.time() %>%
+                             trunc('hour') - max_hours_back * 60 * 60) %>%
+        strftime("%Y-%m-%d %H:%M:%S")
+    maximal_datetime <- (Sys.time() %>%
+                             trunc('hour') + max_hours_forward * 60 * 60) %>%
+        strftime("%Y-%m-%d %H:%M:%S")
+
+    if (model == 'GFS') {
+        stmt <- sprintf(stmt_gfs_modelruns %>% strwrap(width=10000, simplify=TRUE),
+                        minimal_datetime,
+                        maximal_datetime)
+    }
+    a = run.query(stmt)
     return(a$result)
 }
 
@@ -263,3 +260,17 @@ create_observation_history_plot <- function(click, datetimes, df, observable) {
     }
     return(p)
 }
+
+time_diff <- function(time1, basetime, mod_number, units='hours') {
+
+    difftime(time1, basetime, units=units) %>% as.numeric %>% mod(mod_number) %>% as.character %>% return
+
+}
+
+start_value_hirlam <- time_diff(datetimes$datetime_begin, basetime, 72)
+
+end_value_hirlam <- time_diff(datetimes$datetime_end, basetime, 72)
+
+start_value_other <- time_diff(datetimes$datetime_begin, basetime, 72)
+
+end_value_other <- time_diff(datetimes$datetime_end, basetime, 72)

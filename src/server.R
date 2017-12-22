@@ -227,7 +227,6 @@ server <- function(input, output, session) {
         a <- leaflet() %>%
             addTiles() %>%
             fitBounds(3.151613,53.670926,7.623049,50.719332)
-
         return(a)
     })
 
@@ -533,7 +532,6 @@ server <- function(input, output, session) {
 
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
-        print(click)
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
         if(click$group %in% groups_that_can_click) {
             # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
@@ -581,15 +579,29 @@ server <- function(input, output, session) {
             # No plot necessary
             return()
         }
-        stmt <- sprintf("SELECT * from breeze.breeze_power_data_source WHERE aggregateId = %s",
-                        click$id)
+        datetime_begin <- (Sys.time() - 3 * 60 * 60) %>% with_tz('UTC') %>% strftime('%Y-%m-%d %H:%M:%S')
+        stmt <- sprintf("SELECT * from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
+                        click$id,
+                        datetime_begin)
         df <- run.query(stmt)$result
         df$datetime <- df$datetime %>%
             as.POSIXct() %>%
             with_tz('Europe/Amsterdam')
-        df %>% head %>% print
-
-        p <- ggplot() + geom_line(data=df, aes(x=datetime, y=datasignalValue))
+        df$datasignalValue <- df$datasignalValue / 1000
+        p <- ggplot() +
+            geom_line(data=df, aes(x=datetime,
+                                   y=datasignalValue),
+                      color='red')
+        p <- p + geom_hline(yintercept=wind_rt_location[wind_rt_location$aggregateId == click$id, 'nominal_power'] / 1000)
+        p <- p +
+            scale_x_datetime(expand=c(0, 0),
+                             breaks=date_breaks('1 hours'),
+                             labels=date_format("%H:%M", tz='Europe/Amsterdam')) +
+            ylab('Power (MW)') +
+            xlab('Time')
+        if (df$datasignalValue %>% min > 0) {
+            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
+        }
         return(p)
     })
     # IGCC ----

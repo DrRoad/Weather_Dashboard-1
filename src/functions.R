@@ -267,10 +267,10 @@ time_diff <- function(time1, basetime, mod_number, units='hours') {
 
 }
 
-start_value_hirlam <- time_diff(datetimes$datetime_begin, basetime, 72)
-
-end_value_hirlam <- time_diff(datetimes$datetime_end, basetime, 72)
-
-start_value_other <- time_diff(datetimes$datetime_begin, basetime, 72)
-
-end_value_other <- time_diff(datetimes$datetime_end, basetime, 72)
+# start_value_hirlam <- time_diff(datetimes$datetime_begin, basetime, 72)
+#
+# end_value_hirlam <- time_diff(datetimes$datetime_end, basetime, 72)
+#
+# start_value_other <- time_diff(datetimes$datetime_begin, basetime, 72)
+#
+# end_value_other <- time_diff(datetimes$datetime_end, basetime, 72)

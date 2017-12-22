@@ -1,5 +1,6 @@
 # To make sure the times that are obtain from the system are always in UTC, independent
 # on which environment you are working
+
 Sys.setenv(TZ='GMT')
 
 base_path = "../data/"
@@ -63,20 +64,16 @@ directions <- seq(0, 360, 22.5) %>% round(0)
 wind_directions_location <- c("../data/arrows/arrow_icon_%03d.png" %>% sprintf(directions))
 names(wind_directions_location) <- directions
 
-wind_rt_location <- run.query("SELECT * FROM (SELECT
+wind_rt_location <- run.query("SELECT
     longitude as lon,
     latitude as lat,
-    aggregateId
-FROM
-    breeze.breeze_power_data_source
-GROUP BY
-    longitude,
-    latitude)
-breeze
-INNER JOIN (
-    SELECT * FROM mapping.pl_breeze_mapping) mapping
-ON breeze.aggregateid = mapping.breezeId
-")$result
+    aggregateId,
+    nominalpower as nominal_power
+FROM (select * FROM breeze.breeze_power_data_source GROUP BY longitude, latitude) breeze
+INNER JOIN (SELECT * FROM mapping.pl_breeze_mapping) mapping
+    ON breeze.aggregateid = mapping.breezeId
+LEFT JOIN (SELECT * FROM mapping.nominal_power) nominal_power
+    ON mapping.pl = nominal_power.pl")$result
 
 coloring_IGCC <- c("DE" = "white",
                    "NL" = "orange",

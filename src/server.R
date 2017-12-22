@@ -74,6 +74,31 @@ server <- function(input, output, session) {
         df <- lapply(df, function(x) tryCatch(x %>% as.numeric, warning =function(warning) x)) %>% data.frame
         return(df)
     })
+    df_raw_sql_modelrun <- reactive({
+        autoInvalidate_data_fetch_sql()
+        if (!input$model_compare_bool) {return(data.frame())}
+        df_raw_sql_modelrun <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Importing modelrun data',
+            detail='Happy holidays, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                import_data_sql_modelrun_compare(model=input$model)
+            })
+
+
+    })
+    df_modelrun_compare <- reactive({
+        value.var = c('%s_temp', '%s_wind_speed', '%s_air_pressure', '%s_radiation') %>% sprintf(isolate(input$model) %>% tolower)
+        df_raw_sql_modelrun <- df_raw_sql_modelrun()
+        df_modelruncompare <- dcast(setDT(df_raw_sql_modelrun),
+                                    datetime + lat + lon ~ model_date + model_run,
+                                    value.var=value.var) %>%
+            data.frame
+        return(df_modelruncompare)
+    })
     compared_time <- reactive({
         # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
         autoInvalidate_data_fetch_sql()
@@ -178,7 +203,33 @@ server <- function(input, output, session) {
 
 
     # colorpalettes, domains and other boring stuff ----
-    domain_model <- reactive ({
+	observeEvent(df_raw_sql_modelrun(), {
+        df_raw_sql_modelrun <- df_raw_sql_modelrun()
+        if (df_raw_sql_modelrun %>% nrow == 0) {return()}
+        df_raw_sql_modelrun$model_date <- df_raw_sql_modelrun$model_date %>%
+            as.POSIXct()
+        # Get unique combinations of model_date and model_run
+        choices_raw = df_raw_sql_modelrun[, c('model_date', 'model_run')] %>% unique
+        # sort it
+        choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
+        # Make it a format that is readable for Willem
+        choices = paste(strftime(choices_raw$model_date, "%d %b"), sprintf("(%02d)", choices_raw$model_run))
+        selected_base <- ifelse(input$modelrun_base %in% choices_raw,
+                                input$modelrun_base,
+                                choices_raw[1])
+        selected_comp <- ifelse(input$modelrun_comp %in% choices_raw,
+                                input$modelrun_comp,
+                                choices_raw[2])
+        updatePickerInput(session,
+                          'modelrun_base',
+                          choices=set_names(paste(choices_raw$model_date, choices_raw$model_run), choices),
+                          selected=selected_base)
+        updatePickerInput(session,
+                          'modelrun_comp',
+                          choices=set_names(paste(choices_raw$model_date, choices_raw$model_run), choices),
+                          selected=selected_comp)
+	})
+	domain_model <- reactive ({
         list("Windspeed"=c(0, 25),
              "Temperature"=c(-10, 35),
              "Air pressure"=c(950, 1050),

@@ -8,28 +8,65 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
                              trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
     # basically, give everything between min and max datetime
+    table_name <- get_table_name_view(minimal_datetime, maximal_datetime, model)
     if (model == 'HIRLAM') {
         stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) start_value ,
                     (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72) as p) end_value,
                     (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
-                    (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weather_sources_view_hirlam;",
+                    (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.%s;",
                         minimal_datetime,
                         maximal_datetime,
                         minimal_datetime,
-                        maximal_datetime)
+                        maximal_datetime,
+                        table_name)
     }
     if (model == 'GFS') {
         stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) start_value ,
 					(select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) end_value,
 					(select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
-					(select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.weather_sources_view_gfs;",
+					(select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.%s;",
                         minimal_datetime,
                         maximal_datetime,
                         minimal_datetime,
-                        maximal_datetime)
+                        maximal_datetime,
+                        table_name)
     }
     a = run.query(stmt)
     return(a$result)
+}
+
+get_table_name_view <- function(minimal_datetime, maximal_datetime, model) {
+    if (model == 'HIRLAM') {
+        start_value_hirlam <- time_diff(minimal_datetime, basetime, 72)
+        end_value_hirlam <- time_diff(maximal_datetime, basetime, 72)
+        start_value_other <- time_diff(minimal_datetime, basetime, 48)
+        end_value_other <- time_diff(maximal_datetime, basetime, 48)
+        if (start_value_hirlam < end_value_hirlam) {
+            if (start_value_other < end_value_other) {
+                table_name = 'weather_sources_view_hirlam_11'
+            } else {table_name = 'weather_sources_view_hirlam_10'}
+        } else {
+            if (start_value_other < end_value_other) {
+                table_name = 'weather_sources_view_hirlam_01'
+            } else {table_name = 'weather_sources_view_hirlam_00'}
+        }
+    }
+    if (model == 'GFS') {
+        start_value_gfs <- time_diff(minimal_datetime, basetime, 432)
+        end_value_gfs <- time_diff(maximal_datetime, basetime, 432)
+        start_value_other <- time_diff(minimal_datetime, basetime, 48)
+        end_value_other <- time_diff(maximal_datetime, basetime, 48)
+        if (start_value_gfs < end_value_gfs) {
+            if (start_value_other < end_value_other) {
+                table_name = 'weather_sources_view_gfs_11'
+            } else {table_name = 'weather_sources_view_gfs_10'}
+        } else {
+            if (start_value_other < end_value_other) {
+                table_name = 'weather_sources_view_gfs_01'
+            } else {table_name = 'weather_sources_view_gfs_00'}
+        }
+    }
+    return(table_name)
 }
 
 import_data_sql_meteosat <- function(max_hours_back=1, max_hours_forward=1) {
@@ -48,7 +85,7 @@ import_data_sql_meteosat <- function(max_hours_back=1, max_hours_forward=1) {
     return(a$result)
 }
 
-import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_forward=1) {
+import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_forward=5, days_back=3) {
 
     # Min and Max datetime for the query
     minimal_datetime <- (Sys.time() %>%
@@ -57,11 +94,12 @@ import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_
     maximal_datetime <- (Sys.time() %>%
                              trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
-
+    minimal_model_date <- (Sys.Date() - days_back) %>% strftime("%Y-%m-%d")
     if (model == 'GFS') {
         stmt <- sprintf(stmt_gfs_modelruns %>% strwrap(width=10000, simplify=TRUE),
                         minimal_datetime,
-                        maximal_datetime)
+                        maximal_datetime,
+                        minimal_model_date)
     }
     a = run.query(stmt)
     return(a$result)
@@ -80,7 +118,7 @@ run.query <- function(stmt) {
         password = "eet@123")
     on.exit(dbDisconnect(conn), add=TRUE)
     # Do the actual query
-    result <- dbGetQuery(conn, stmt)
+    result <- suppressWarnings(dbGetQuery(conn, stmt))
     # time logging
     time <- round(as.numeric((proc.time() - ptm)["elapsed"]), 2)
     print(sprintf("Query took %.2f seconds", time))
@@ -267,10 +305,11 @@ time_diff <- function(time1, basetime, mod_number, units='hours') {
 
 }
 
-# start_value_hirlam <- time_diff(datetimes$datetime_begin, basetime, 72)
-#
-# end_value_hirlam <- time_diff(datetimes$datetime_end, basetime, 72)
-#
-# start_value_other <- time_diff(datetimes$datetime_begin, basetime, 72)
-#
-# end_value_other <- time_diff(datetimes$datetime_end, basetime, 72)
+change_input_to_column_name <- function(input_date, model, observable) {
+    sprintf("%s_%s",
+            conversion_list_model[[model]][[observable]],
+            input_date %>%
+                gsub("-", '.', .) %>%
+                gsub(" ", '_', .)
+    )
+}

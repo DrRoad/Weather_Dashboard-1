@@ -93,11 +93,14 @@ server <- function(input, output, session) {
     df_modelrun_compare <- reactive({
         value.var = c('%s_temp', '%s_wind_speed', '%s_air_pressure', '%s_radiation') %>% sprintf(isolate(input$model) %>% tolower)
         df_raw_sql_modelrun <- df_raw_sql_modelrun()
-        df_modelruncompare <- dcast(setDT(df_raw_sql_modelrun),
+        if (nrow(df_raw_sql_modelrun)==0) {print("df_raw_sql_modelrun empty"); return(data.frame())}
+        compared_time <- compared_time()
+        df_modelrun_compare <- dcast(setDT(df_raw_sql_modelrun),
                                     datetime + lat + lon ~ model_date + model_run,
                                     value.var=value.var) %>%
             data.frame
-        return(df_modelruncompare)
+        df_modelrun_compare <- df_modelrun_compare[df_modelrun_compare$datetime == compared_time, ]
+        return(df_modelrun_compare)
     })
     compared_time <- reactive({
         # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
@@ -130,11 +133,23 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing in raw df");return(data.frame())}
+        if(nrow(df)==0) {print("Nothing in raw df"); return(data.frame())}
         observable_fc <- model_observable()
         df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
     })
+	df_modelrun_compare_raster <- reactive({
+	    df_modelrun_compare <- df_modelrun_compare()
+	    print('Here?')
+        if (nrow(df_modelrun_compare) == 0) {return(data.frame())}
+	    if ('loading' %in% c(input$modelrun_base, input$modelrun_comp)) {return(data.frame())}
+
+	    column_base <- change_input_to_column_name(input$modelrun_base, input$model, input$observable)
+	    column_comp <- change_input_to_column_name(input$modelrun_comp, input$model, input$observable)
+
+	    df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
+	    raster_maker(df_modelrun_compare, 'diff')
+	})
     df_knmi <- reactive({
         df <- df()
         observable_knmi <- conversion_list_KNMI[[input$observable]]
@@ -200,8 +215,6 @@ server <- function(input, output, session) {
 
 	    return(lines)
 	})
-
-
     # colorpalettes, domains and other boring stuff ----
 	observeEvent(df_raw_sql_modelrun(), {
         df_raw_sql_modelrun <- df_raw_sql_modelrun()
@@ -214,19 +227,20 @@ server <- function(input, output, session) {
         choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
         # Make it a format that is readable for Willem
         choices = paste(strftime(choices_raw$model_date, "%d %b"), sprintf("(%02d)", choices_raw$model_run))
+        choices = set_names(paste(choices_raw$model_date, choices_raw$model_run), choices)
         selected_base <- ifelse(input$modelrun_base %in% choices_raw,
                                 input$modelrun_base,
-                                choices_raw[1])
+                                choices[1])
         selected_comp <- ifelse(input$modelrun_comp %in% choices_raw,
                                 input$modelrun_comp,
-                                choices_raw[2])
+                                choices[2])
         updatePickerInput(session,
                           'modelrun_base',
-                          choices=set_names(paste(choices_raw$model_date, choices_raw$model_run), choices),
+                          choices=choices,
                           selected=selected_base)
         updatePickerInput(session,
                           'modelrun_comp',
-                          choices=set_names(paste(choices_raw$model_date, choices_raw$model_run), choices),
+                          choices=choices,
                           selected=selected_comp)
 	})
 	domain_model <- reactive ({
@@ -268,9 +282,6 @@ server <- function(input, output, session) {
         options[[input$observable]]
 
     })
-
-
-
     # MAP ----
     output$map <- renderLeaflet({
         "Rendering Leaflet" %>% print
@@ -280,8 +291,11 @@ server <- function(input, output, session) {
             fitBounds(3.151613,53.670926,7.623049,50.719332)
         return(a)
     })
-
     observeEvent({df_model_raster()}, {
+        if (isolate(input$model_compare_bool)) {
+            # We want to compare thingies, so we do not need the 'normal' map
+            return()
+        }
         df_model_raster <- df_model_raster()
         leafletProxy('map') %>%
             clearGroup('model')
@@ -305,7 +319,27 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
+	observeEvent({df_modelrun_compare_raster()}, {
+	    if (!isolate(input$model_compare_bool)) {
+	        # This plots the comparison, so the bool should be True!
+	        return()
+	    }
+	    df_modelrun_compare_raster <- df_modelrun_compare_raster()
+	    leafletProxy('map') %>%
+	        clearGroup('model')
+	    if (nrow(df_modelrun_compare_raster) == 0) {return()}
+	    leafletProxy('map') %>%
+	        clearControls %>%
+	        addRasterImage(df_modelrun_compare_raster,
+	                       color=cpalet_circlemarkers(),
+	                       opacity=0.5,
+	                       group='model') %>%
+	        addLegend(pal=cpalet_circlemarkers(),
+	                  values=domain_diff() %>% rev,
+	                  title=sprintf("%s diff", input$observable),
+	                  layerId='model_legend')
+	})
+    observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
 	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
             clearGroup('MeteoSat_cot')
@@ -592,7 +626,6 @@ server <- function(input, output, session) {
             rv$click_wind_rt <<- click
         }
     })
-
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%

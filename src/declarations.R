@@ -43,6 +43,8 @@ conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
                                         "Air pressure"="pressure",
                                         "Radiation"="pressure") # Not available
 
+conversion_list_model <<- list('GFS' = conversion_list_GFS,
+                               'HIRLAM' = conversion_list_HIRLAM)
 conversion_list_observations_plot <<- list("knmi"=conversion_list_KNMI_plot,
                                            "owm"=conversion_list_OWM_plot,
                                            "metoffice"=conversion_list_metoffice_plot
@@ -216,6 +218,7 @@ FROM
 WHERE
     partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
     AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+    AND model_date >= '%s'
 ORDER BY
     model_date,
     model_run"

@@ -90,16 +90,23 @@ server <- function(input, output, session) {
 
 
     })
-    df_modelrun_compare <- reactive({
-        value.var = c('%s_temp', '%s_wind_speed', '%s_air_pressure', '%s_radiation') %>% sprintf(isolate(input$model) %>% tolower)
+    df_modelrun_compare_all <- reactive({
         df_raw_sql_modelrun <- df_raw_sql_modelrun()
         if (nrow(df_raw_sql_modelrun)==0) {print("df_raw_sql_modelrun empty"); return(data.frame())}
         compared_time <- compared_time()
-        df_modelrun_compare <- dcast(setDT(df_raw_sql_modelrun),
+        df_modelrun_compare_all <- df_raw_sql_modelrun[df_raw_sql_modelrun$datetime == compared_time, ]
+        return(df_modelrun_compare_all)
+    })
+    df_modelrun_compare <- reactive({
+        value.var = c('%s_temp', '%s_wind_speed', '%s_air_pressure', '%s_radiation') %>% sprintf(isolate(input$model) %>% tolower)
+
+        df_modelrun_compare_all <- df_modelrun_compare_all()
+        if (nrow(df_modelrun_compare_all)==0) {return(data.frame())}
+        df_modelrun_compare <- dcast(setDT(df_modelrun_compare_all),
                                     datetime + lat + lon ~ model_date + model_run,
                                     value.var=value.var) %>%
             data.frame
-        df_modelrun_compare <- df_modelrun_compare[df_modelrun_compare$datetime == compared_time, ]
+
         return(df_modelrun_compare)
     })
     compared_time <- reactive({
@@ -140,13 +147,15 @@ server <- function(input, output, session) {
     })
 	df_modelrun_compare_raster <- reactive({
 	    df_modelrun_compare <- df_modelrun_compare()
-	    print('Here?')
         if (nrow(df_modelrun_compare) == 0) {return(data.frame())}
 	    if ('loading' %in% c(input$modelrun_base, input$modelrun_comp)) {return(data.frame())}
 
 	    column_base <- change_input_to_column_name(input$modelrun_base, input$model, input$observable)
 	    column_comp <- change_input_to_column_name(input$modelrun_comp, input$model, input$observable)
 
+	    column_base %>% print
+	    column_comp %>% print
+        if (!(column_base %in% names(df_modelrun_compare) & column_comp %in% names(df_modelrun_compare))) {return(data.frame())}
 	    df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
 	    raster_maker(df_modelrun_compare, 'diff')
 	})
@@ -216,13 +225,13 @@ server <- function(input, output, session) {
 	    return(lines)
 	})
     # colorpalettes, domains and other boring stuff ----
-	observeEvent(df_raw_sql_modelrun(), {
-        df_raw_sql_modelrun <- df_raw_sql_modelrun()
-        if (df_raw_sql_modelrun %>% nrow == 0) {return()}
-        df_raw_sql_modelrun$model_date <- df_raw_sql_modelrun$model_date %>%
+	observeEvent({df_modelrun_compare_all()}, {
+        df_modelrun_compare_all <- df_modelrun_compare_all()
+        if (df_modelrun_compare_all %>% nrow == 0) {return()}
+        df_modelrun_compare_all$model_date <- df_modelrun_compare_all$model_date %>%
             as.POSIXct()
         # Get unique combinations of model_date and model_run
-        choices_raw = df_raw_sql_modelrun[, c('model_date', 'model_run')] %>% unique
+        choices_raw = df_modelrun_compare_all[, c('model_date', 'model_run')] %>% unique
         # sort it
         choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
         # Make it a format that is readable for Willem
@@ -291,7 +300,7 @@ server <- function(input, output, session) {
             fitBounds(3.151613,53.670926,7.623049,50.719332)
         return(a)
     })
-    observeEvent({df_model_raster()}, {
+    observeEvent({df_model_raster(); input$model_compare_bool}, {
         if (isolate(input$model_compare_bool)) {
             # We want to compare thingies, so we do not need the 'normal' map
             return()
@@ -319,8 +328,8 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	observeEvent({df_modelrun_compare_raster()}, {
-	    if (!isolate(input$model_compare_bool)) {
+	observeEvent({df_modelrun_compare_raster(); input$model_compare_bool}, {
+	    if (!input$model_compare_bool) {
 	        # This plots the comparison, so the bool should be True!
 	        return()
 	    }

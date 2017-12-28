@@ -209,7 +209,9 @@ get_gfs_history <- function(lat, lon, datetimes) {
                     datetimes$datetime_begin,
                     datetimes$datetime_end,
                     lat,
-                    lon)
+                    lon,
+                    datetimes$datetime_begin,
+                    datetimes$datetime_end)
     df_gfs_history_plot <- run.query(stmt)$result
     df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
     return(df_gfs_history_plot)

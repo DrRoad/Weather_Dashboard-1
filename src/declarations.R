@@ -89,17 +89,25 @@ coloring_IGCC <- c("DE" = "white",
 # Query statements ----
 basetime <- as.POSIXct('2017-11-29 00:00:00')
 stmt_gfs_history <- "SELECT gfs.datetime as datetime,
-                            gfs.2_metre_temperature_level_2 as gfs_temp,
-                            gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
-                            gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
-                            gfs.surface_pressure_level_0 as gfs_air_pressure
-FROM gfs_data_source gfs INNER JOIN
-(
-    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
-    FROM gfs_data_source
-    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432  AND lat = %.2f AND lon = %.2f
-    GROUP BY datetime, lat, lon
-) gfs2 on gfs.lon = gfs2.lon AND gfs.lat = gfs2.lat and gfs.datetime = gfs2.datetime and gfs.hours_ahead = gfs2.hours_ahead"
+    gfs.2_metre_temperature_level_2 as gfs_temp,
+    gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
+    gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
+    gfs.surface_pressure_level_0 as gfs_air_pressure
+    FROM gfs_data_source gfs INNER JOIN
+    (
+        SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+        FROM gfs_data_source
+        WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+              AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+              AND lat = %.2f
+              AND lon = %.2f
+        GROUP BY datetime, lat, lon
+    ) gfs2 ON gfs.lon = gfs2.lon
+              AND gfs.lat = gfs2.lat
+              AND gfs.datetime = gfs2.datetime
+              AND gfs.hours_ahead = gfs2.hours_ahead
+where gfs.partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+      AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432"
 
 stmt_gfs_history_apx <- "SELECT datetime,
                                 2_metre_temperature_level_2 as gfs_temp,
@@ -218,6 +226,26 @@ FROM
 WHERE
     partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
     AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+    AND model_date >= '%s'
+ORDER BY
+    model_date,
+    model_run"
+
+stmt_hirlam_modelruns <- "SELECT
+    model_date,
+    model_run,
+    datetime,
+    lat,
+    lon,
+    2_metre_temperature - 273.15 as hirlam_temp,
+    10_metre_wind_speed as hirlam_wind_speed,
+    global_radiation_flux as hirlam_radiation,
+    pressure as hirlam_air_pressure
+FROM
+    hirlam_data_source
+WHERE
+    partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48
+    AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48
     AND model_date >= '%s'
 ORDER BY
     model_date,

@@ -9,7 +9,8 @@ pacman::p_load(shiny,
                stringr,
                reshape2,
                magrittr,
-               grDevices)
+               grDevices,
+               data.table)
 
 source("functions.R")
 source("declarations.R")
@@ -236,7 +237,9 @@ server <- function(input, output, session) {
         # sort it
         choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
         # Make it a format that is readable for Willem
-        choices = paste(strftime(choices_raw$model_date, "%d %b"), sprintf("(%02d)", choices_raw$model_run))
+        choices = paste(strftime(choices_raw$model_date, "%d %b"),
+                        sprintf("(%02d)", choices_raw$model_run),
+                        ifelse(choices_raw$model_run == 6, "(APX)", ""))
         choices = set_names(paste(choices_raw$model_date, choices_raw$model_run), choices)
         selected_base <- ifelse(input$modelrun_base %in% choices_raw,
                                 input$modelrun_base,

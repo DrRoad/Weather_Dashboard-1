@@ -155,13 +155,35 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    "glyphicon-flag",
                                                                    "glyphicon glyphicon-dashboard",
                                                                    "glyphicon-certificate")),
-                                        selected='Temperature')
+                                        selected='Temperature'),
+							box(title='Model compare',
+							    solidHeader=FALSE,
+							    collapsible=TRUE,
+							    collapsed=FALSE,
+							    color='olive',
+							    background='navy',
+							    width='100%',
+							    heigth=300,
+							    switchInput('model_compare_bool',
+							                label='Compare run',
+							                size='small',
+							                value=FALSE,
+							                labelWidth='60px',
+							                handleWidth='30px'
+							    ),
 
-
+							    pickerInput('modelrun_base',
+							                'Base run',
+							                choices=list('Loading'='loading')
+							    ),
+							    pickerInput('modelrun_comp',
+							                'Compared to',
+							                choices=list('Loading'='loading')
+							    )
+							)
                         ),
                         conditionalPanel(condition="input.conditionedPanels==2",
                                          helpText("Dos")
-
                         ),
                         conditionalPanel(condition="input.conditionedPanels==3",
                                          helpText("Tres!")
@@ -207,6 +229,19 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                     heigth=300,
                                                     fluidRow(
                                                         plotOutput('observation_history_plot',
+                                                                   height="250",
+                                                                   width="90%")
+                                                    )
+                                                ),
+                                                box(title='Wind RT',
+                                                    solidHeader=FALSE,
+                                                    collapsible=TRUE,
+                                                    collapsed=FALSE,
+                                                    color='black',
+                                                    width=12,
+                                                    heigth=300,
+                                                    fluidRow(
+                                                        plotOutput('wind_rt_plot',
                                                                    height="250",
                                                                    width="90%")
                                                     )

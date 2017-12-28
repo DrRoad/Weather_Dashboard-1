@@ -11,13 +11,13 @@ pacman::p_load(shiny,
                magrittr,
                grDevices)
 
-
 source("functions.R")
 source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL,
-                     click=NULL)
+                     click=NULL,
+                     click_wind_rt=NULL)
 
 server <- function(input, output, session) {
     # autoInvalidates ----
@@ -74,6 +74,41 @@ server <- function(input, output, session) {
         df <- lapply(df, function(x) tryCatch(x %>% as.numeric, warning =function(warning) x)) %>% data.frame
         return(df)
     })
+    df_raw_sql_modelrun <- reactive({
+        autoInvalidate_data_fetch_sql()
+        if (!input$model_compare_bool) {return(data.frame())}
+        df_raw_sql_modelrun <- withProgress(
+            # This part takes care of showing the notifcation when data is fetched
+            message='Importing modelrun data',
+            detail='Happy holidays, Mathias',
+            value=NULL,
+            style='old',
+            {
+                # The actual data fetching
+                import_data_sql_modelrun_compare(model=input$model)
+            })
+
+
+    })
+    df_modelrun_compare_all <- reactive({
+        df_raw_sql_modelrun <- df_raw_sql_modelrun()
+        if (nrow(df_raw_sql_modelrun)==0) {print("df_raw_sql_modelrun empty"); return(data.frame())}
+        compared_time <- compared_time()
+        df_modelrun_compare_all <- df_raw_sql_modelrun[df_raw_sql_modelrun$datetime == compared_time, ]
+        return(df_modelrun_compare_all)
+    })
+    df_modelrun_compare <- reactive({
+        value.var = c('%s_temp', '%s_wind_speed', '%s_air_pressure', '%s_radiation') %>% sprintf(isolate(input$model) %>% tolower)
+
+        df_modelrun_compare_all <- df_modelrun_compare_all()
+        if (nrow(df_modelrun_compare_all)==0) {return(data.frame())}
+        df_modelrun_compare <- dcast(setDT(df_modelrun_compare_all),
+                                    datetime + lat + lon ~ model_date + model_run,
+                                    value.var=value.var) %>%
+            data.frame
+
+        return(df_modelrun_compare)
+    })
     compared_time <- reactive({
         # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
         autoInvalidate_data_fetch_sql()
@@ -105,11 +140,25 @@ server <- function(input, output, session) {
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
-        if(nrow(df)==0) {print("Nothing in raw df");return(data.frame())}
+        if(nrow(df)==0) {print("Nothing in raw df"); return(data.frame())}
         observable_fc <- model_observable()
         df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
     })
+	df_modelrun_compare_raster <- reactive({
+	    df_modelrun_compare <- df_modelrun_compare()
+        if (nrow(df_modelrun_compare) == 0) {return(data.frame())}
+	    if ('loading' %in% c(input$modelrun_base, input$modelrun_comp)) {return(data.frame())}
+
+	    column_base <- change_input_to_column_name(input$modelrun_base, input$model, input$observable)
+	    column_comp <- change_input_to_column_name(input$modelrun_comp, input$model, input$observable)
+
+	    column_base %>% print
+	    column_comp %>% print
+        if (!(column_base %in% names(df_modelrun_compare) & column_comp %in% names(df_modelrun_compare))) {return(data.frame())}
+	    df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
+	    raster_maker(df_modelrun_compare, 'diff')
+	})
     df_knmi <- reactive({
         df <- df()
         observable_knmi <- conversion_list_KNMI[[input$observable]]
@@ -175,10 +224,35 @@ server <- function(input, output, session) {
 
 	    return(lines)
 	})
-
-
     # colorpalettes, domains and other boring stuff ----
-    domain_model <- reactive ({
+	observeEvent({df_modelrun_compare_all()}, {
+        df_modelrun_compare_all <- df_modelrun_compare_all()
+        if (df_modelrun_compare_all %>% nrow == 0) {return()}
+        df_modelrun_compare_all$model_date <- df_modelrun_compare_all$model_date %>%
+            as.POSIXct()
+        # Get unique combinations of model_date and model_run
+        choices_raw = df_modelrun_compare_all[, c('model_date', 'model_run')] %>% unique
+        # sort it
+        choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
+        # Make it a format that is readable for Willem
+        choices = paste(strftime(choices_raw$model_date, "%d %b"), sprintf("(%02d)", choices_raw$model_run))
+        choices = set_names(paste(choices_raw$model_date, choices_raw$model_run), choices)
+        selected_base <- ifelse(input$modelrun_base %in% choices_raw,
+                                input$modelrun_base,
+                                choices[1])
+        selected_comp <- ifelse(input$modelrun_comp %in% choices_raw,
+                                input$modelrun_comp,
+                                choices[2])
+        updatePickerInput(session,
+                          'modelrun_base',
+                          choices=choices,
+                          selected=selected_base)
+        updatePickerInput(session,
+                          'modelrun_comp',
+                          choices=choices,
+                          selected=selected_comp)
+	})
+	domain_model <- reactive ({
         list("Windspeed"=c(0, 25),
              "Temperature"=c(-10, 35),
              "Air pressure"=c(950, 1050),
@@ -217,9 +291,6 @@ server <- function(input, output, session) {
         options[[input$observable]]
 
     })
-
-
-
     # MAP ----
     output$map <- renderLeaflet({
         "Rendering Leaflet" %>% print
@@ -227,11 +298,13 @@ server <- function(input, output, session) {
         a <- leaflet() %>%
             addTiles() %>%
             fitBounds(3.151613,53.670926,7.623049,50.719332)
-
         return(a)
     })
-
-    observeEvent({df_model_raster()}, {
+    observeEvent({df_model_raster(); input$model_compare_bool}, {
+        if (isolate(input$model_compare_bool)) {
+            # We want to compare thingies, so we do not need the 'normal' map
+            return()
+        }
         df_model_raster <- df_model_raster()
         leafletProxy('map') %>%
             clearGroup('model')
@@ -255,7 +328,27 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
+	observeEvent({df_modelrun_compare_raster(); input$model_compare_bool}, {
+	    if (!input$model_compare_bool) {
+	        # This plots the comparison, so the bool should be True!
+	        return()
+	    }
+	    df_modelrun_compare_raster <- df_modelrun_compare_raster()
+	    leafletProxy('map') %>%
+	        clearGroup('model')
+	    if (nrow(df_modelrun_compare_raster) == 0) {return()}
+	    leafletProxy('map') %>%
+	        clearControls %>%
+	        addRasterImage(df_modelrun_compare_raster,
+	                       color=cpalet_circlemarkers(),
+	                       opacity=0.5,
+	                       group='model') %>%
+	        addLegend(pal=cpalet_circlemarkers(),
+	                  values=domain_diff() %>% rev,
+	                  title=sprintf("%s diff", input$observable),
+	                  layerId='model_legend')
+	})
+    observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
 	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
             clearGroup('MeteoSat_cot')
@@ -366,7 +459,8 @@ server <- function(input, output, session) {
                              color='white',
                              fillOpacity=1,
                              opacity=1,
-                             group='MetOffice_markers')
+                             group='MetOffice_markers',
+                             layerId=df_metoffice$metoffice_name)
     })
     observeEvent({input$wind_rt}, {
         leafletProxy('map') %>%
@@ -385,7 +479,8 @@ server <- function(input, output, session) {
             addMarkers(lat = wind_rt_location$lat,
                        lng = wind_rt_location$lon,
                        icon = icons_size,
-                       group="wind_rt")
+                       group="wind_rt",
+                       layerId=wind_rt_location$aggregateId)
 
     })
     observeEvent({input$windparks_Eneco}, {
@@ -532,11 +627,14 @@ server <- function(input, output, session) {
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
         groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
-        if(is.null(click) | !click$group %in% groups_that_can_click) {return()}
-        # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
-        rv$click <<- click
+        if(click$group %in% groups_that_can_click) {
+            # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
+            rv$click <<- click
+        }
+        if (click$group == "wind_rt") {
+            rv$click_wind_rt <<- click
+        }
     })
-
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%
@@ -568,104 +666,37 @@ server <- function(input, output, session) {
             })
         return(p)
     })
-
-
-    output$knmi_history_plot <- renderPlot({
-        if(is.null(rv$knmi_station_history)) {
+    output$wind_rt_plot <- renderPlot({
+        click <- rv$click_wind_rt
+        if(is.null(click)) {
             # No plot necessary
             return()
         }
-        # Datetime of begin/end of the day
-        datetimes <- get_datetimes_history()
-        # Get all rows for the specific KNMI station since beginning of this day
-        stmt <- sprintf("SELECT * FROM knmi_data_source WHERE stationname = '%s' AND datetime >= '%s'",
-                        rv$knmi_station_history,
-                        datetimes$datetime_begin
-        )
-        df_knmi_history_plot <- run.query(stmt)$result
-        # Make it datetime, and Europe/Amsterdam
-        df_knmi_history_plot$datetime <- df_knmi_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
-        p <- ggplot()
-        p <- p + geom_line(data=df_knmi_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_KNMI_plot[[input$observable]]),
-                           color='red')
-        # Determine the lat/lon to join KNMI on with GFS
-        knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.25, 0) * 0.25
-        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        df_gfs_history_plot <- get_gfs_history(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black')
-        df_gfs_history_plot_apx <- get_gfs_history_apx(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot_apx,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black',
-                           linetype='dashed')
-	      knmi_lat <- round(df_knmi_history_plot[1, 'lat'] / 0.1, 0) * 0.1
-        knmi_lon <- round(df_knmi_history_plot[1, 'lon'] / 0.1, 0) * 0.1
-        df_hirlam_history_plot <- get_hirlam_history(knmi_lat, knmi_lon, datetimes)
-        p <- p + geom_line(data=df_hirlam_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_HIRLAM[[input$observable]]),
-                           color='green')
-        p <- p + ggtitle(rv$knmi_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
-        if (input$observable == 'Windspeed') {
+        datetime_begin <- (Sys.time() - 3 * 60 * 60) %>% with_tz('UTC') %>% strftime('%Y-%m-%d %H:%M:%S')
+        stmt <- sprintf("SELECT * from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
+                        click$id,
+                        datetime_begin)
+        df <- run.query(stmt)$result
+        df$datetime <- df$datetime %>%
+            as.POSIXct() %>%
+            with_tz('Europe/Amsterdam')
+        df$datasignalValue <- df$datasignalValue / 1000
+        p <- ggplot() +
+            geom_line(data=df, aes(x=datetime,
+                                   y=datasignalValue),
+                      color='red')
+        p <- p + geom_hline(yintercept=wind_rt_location[wind_rt_location$aggregateId == click$id, 'nominal_power'] / 1000)
+        p <- p +
+            scale_x_datetime(expand=c(0, 0),
+                             breaks=date_breaks('1 hours'),
+                             labels=date_format("%H:%M", tz='Europe/Amsterdam')) +
+            ylab('Power (MW)') +
+            xlab('Time')
+        if (df$datasignalValue %>% min > 0) {
             p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
         }
         return(p)
     })
-    output$metoffice_history_plot <- renderPlot({
-        if(is.null(rv$metoffice_station_history)) {
-            # No plot necessary
-            return()
-        }
-        # Datetime of begin/end of the day
-        datetimes <- get_datetimes_history()
-        # Get all rows for the specific metoffice station since beginning of this day
-        stmt <- sprintf(stmt_metoffice_history %>% strwrap(width=10000, simplify=TRUE),
-                        rv$metoffice_station_history,
-                        datetimes$datetime_begin,
-                        datetimes$datetime_end
-        )
-        df_metoffice_history_plot <- run.query(stmt)$result
-        # Make it datetime, and Europe/Amsterdam
-        df_metoffice_history_plot$datetime <- df_metoffice_history_plot$datetime %>% as.POSIXct() %>% with_tz('Europe/Amsterdam')
-        p <- ggplot()
-        p <- p + geom_line(data=df_metoffice_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_metoffice_plot[[input$observable]]),
-                           color='red')
-        # Determine the lat/lon to join metoffice on with GFS
-        metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.25, 0) * 0.25
-        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.25, 0) * 0.25
-        df_gfs_history_plot <- get_gfs_history(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black')
-        df_gfs_history_plot_apx <- get_gfs_history_apx(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_gfs_history_plot_apx,
-                           aes_string(x='datetime',
-                                      y=conversion_list_GFS[[input$observable]]),
-                           color='black',
-                           linetype='dashed')
-		metoffice_lat <- round(df_metoffice_history_plot[1, 'lat'] / 0.1, 0) * 0.1
-        metoffice_lon <- round(df_metoffice_history_plot[1, 'lon'] / 0.1, 0) * 0.1
-        df_hirlam_history_plot <- get_hirlam_history(metoffice_lat, metoffice_lon, datetimes)
-        p <- p + geom_line(data=df_hirlam_history_plot,
-                           aes_string(x='datetime',
-                                      y=conversion_list_HIRLAM[[input$observable]]),
-                           color='green')
-        p <- p + ggtitle(rv$metoffice_station_history) + ylab(input$observable) + scale_x_datetime(expand=c(0,0))
-        if (input$observable == 'Windspeed') {
-            p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
-        }
-        return(p)
-    })
-
     # IGCC ----
     IGCC_data <- reactive({
         autoInvalidate_IGCC()

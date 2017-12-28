@@ -100,6 +100,11 @@ import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_
                         minimal_datetime,
                         maximal_datetime,
                         minimal_model_date)
+    } else if (model == 'HIRLAM') {
+        stmt <- sprintf(stmt_hirlam_modelruns %>% strwrap(width=10000, simplify=TRUE),
+                        minimal_datetime,
+                        maximal_datetime,
+                        minimal_model_date)
     }
     a = run.query(stmt)
     return(a$result)

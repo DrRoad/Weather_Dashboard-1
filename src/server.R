@@ -97,6 +97,7 @@ server <- function(input, output, session) {
         if (nrow(df_raw_sql_modelrun)==0) {print("df_raw_sql_modelrun empty"); return(data.frame())}
         compared_time <- compared_time()
         df_modelrun_compare_all <- df_raw_sql_modelrun[df_raw_sql_modelrun$datetime == compared_time, ]
+        print(df_modelrun_compare_all %>% head)
         return(df_modelrun_compare_all)
     })
     df_modelrun_compare <- reactive({
@@ -227,7 +228,7 @@ server <- function(input, output, session) {
 	    return(lines)
 	})
     # colorpalettes, domains and other boring stuff ----
-	observeEvent({df_modelrun_compare_all()}, {
+	observeEvent({df_modelrun_compare_all(); input$model}, {
         df_modelrun_compare_all <- df_modelrun_compare_all()
         if (df_modelrun_compare_all %>% nrow == 0) {return()}
         df_modelrun_compare_all$model_date <- df_modelrun_compare_all$model_date %>%
@@ -237,9 +238,9 @@ server <- function(input, output, session) {
         # sort it
         choices_raw <- choices_raw[order(choices_raw$model_date, choices_raw$model_run) %>% rev, ]
         # Make it a format that is readable for Willem
-        choices = paste(strftime(choices_raw$model_date, "%d %b"),
-                        sprintf("(%02d)", choices_raw$model_run),
-                        ifelse(choices_raw$model_run == 6, "(APX)", ""))
+        choices = paste0(strftime(choices_raw$model_date, "%d %b"),
+                         sprintf(" (%02d)", choices_raw$model_run),
+                         ifelse(choices_raw$model_run == 6, " (APX)", ""))
         choices = set_names(paste(choices_raw$model_date, choices_raw$model_run), choices)
         selected_base <- ifelse(input$modelrun_base %in% choices_raw,
                                 input$modelrun_base,

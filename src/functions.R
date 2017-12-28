@@ -313,3 +313,8 @@ change_input_to_column_name <- function(input_date, model, observable) {
                 gsub(" ", '_', .)
     )
 }
+
+convert_click_to_coordinates <- function(e) {
+    if(is.null(e)) return(NULL)
+    list(lon=round(e$lng, 3), lat=round(e$lat, 3))
+}

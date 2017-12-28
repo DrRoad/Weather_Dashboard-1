@@ -17,7 +17,8 @@ source("declarations.R")
 rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL,
                      click=NULL,
-                     click_wind_rt=NULL)
+                     click_wind_rt=NULL,
+                     click_value=NULL)
 
 server <- function(input, output, session) {
     # autoInvalidates ----
@@ -634,12 +635,19 @@ server <- function(input, output, session) {
         if (click$group == "wind_rt") {
             rv$click_wind_rt <<- click
         }
+        rv$click_value <<- convert_click_to_coordinates(click)
     })
     # Complementary stuff ----
     output$compared_time <- renderText({
         compared_time() %>%
             with_tz('Europe/Amsterdam') %>%
             strftime("%d %b %H:%M", tz='Europe/Amsterdam')
+    })
+    output$click_value <- renderText({
+        if (is.null(rv$click_value)) {return(NULL)}
+        frame = cbind.data.frame(rv$click_value$lat, rv$click_value$lon)
+        coordinates(frame) <- ~coordinates$lon + coordinates$lat
+        extract(residual_grid_f(), frame) %>% round(2)
     })
     output$observation_history_plot <- renderPlot({
         # do checks if the click is empty/NULL

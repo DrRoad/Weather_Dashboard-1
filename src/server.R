@@ -635,7 +635,10 @@ server <- function(input, output, session) {
         if (click$group == "wind_rt") {
             rv$click_wind_rt <<- click
         }
-        rv$click_value <<- convert_click_to_coordinates(click)
+    })
+    observeEvent({input$map_click}, {
+        click <- input$map_click
+        rv$click_value <<- click
     })
     # Complementary stuff ----
     output$compared_time <- renderText({
@@ -645,9 +648,13 @@ server <- function(input, output, session) {
     })
     output$click_value <- renderText({
         if (is.null(rv$click_value)) {return(NULL)}
-        frame = cbind.data.frame(rv$click_value$lat, rv$click_value$lon)
+        coordinates <- convert_click_to_coordinates(rv$click_value)
+        frame = cbind.data.frame(coordinates$lat, coordinates$lon)
         coordinates(frame) <- ~coordinates$lon + coordinates$lat
-        extract(residual_grid_f(), frame) %>% round(2)
+        click_value <- ifelse(input$model_compare_bool,
+                              extract(df_modelrun_compare_raster(), frame) %>% round(2),
+                              extract(df_model_raster(), frame) %>% round(2))
+        return(sprintf('Click value: %.2f', click_value))
     })
     output$observation_history_plot <- renderPlot({
         # do checks if the click is empty/NULL

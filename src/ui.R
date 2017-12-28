@@ -169,7 +169,7 @@ ui <- dashboardPage(title="Weather Dashboard",
 							                label='Compare run',
 							                size='small',
 							                value=FALSE,
-							                labelWidth='60px',
+							                labelWidth='75px',
 							                handleWidth='30px'
 							    ),
 

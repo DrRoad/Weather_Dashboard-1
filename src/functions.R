@@ -110,6 +110,27 @@ import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_
     return(a$result)
 }
 
+import_data_ID <- function(date=Sys.Date()) {
+    minimal_datetime <- date %>%
+        as.POSIXct %>%
+        with_tz('Europe/Amsterdam') %>%
+        trunc('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+    maximal_datetime <- (date + 1) %>%
+        as.POSIXct %>%
+        with_tz('Europe/Amsterdam') %>%
+        trunc('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+
+    stmt <- sprintf(stmt_ID_data %>% strwrap(width=10000, simplify=TRUE),
+            minimal_datetime,
+            maximal_datetime)
+    a <- run.query(stmt)
+    return(a$result)
+}
+
 run.query <- function(stmt) {
     # press start on stopwatch
     ptm <- proc.time()

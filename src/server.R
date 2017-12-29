@@ -10,7 +10,8 @@ pacman::p_load(shiny,
                reshape2,
                magrittr,
                grDevices,
-               data.table)
+               data.table,
+               igraph)
 
 source("functions.R")
 source("declarations.R")

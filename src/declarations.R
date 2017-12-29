@@ -250,3 +250,23 @@ WHERE
 ORDER BY
     model_date,
     model_run"
+
+stmt_ID_data <- "SELECT
+    intraday1.datetime,
+    intraday1.country_from,
+    intraday1.country_to,
+    intraday1.value_in_mw
+FROM (select * FROM intraday_data_source) intraday1
+INNER JOIN (
+    SELECT datetime,
+           country_from,
+           country_to,
+           max(processed_time) as processed_time
+    FROM intraday_data_source
+    GROUP BY datetime, country_from, country_to) intraday2
+ON intraday1.datetime = intraday2.datetime
+   AND intraday1.country_from = intraday2.country_from
+   AND intraday1.country_to = intraday2.country_to
+   AND intraday1.processed_time = intraday2.processed_time
+WHERE intraday1.datetime >= '%s' AND intraday1.datetime < '%s'
+ORDER by datetime, country_from, country_to"

@@ -25,7 +25,8 @@ server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
-    autoinvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
+    autoInvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
+    autoInvalidatwind_rt_graph <- reactivetimer(1 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -687,6 +688,7 @@ server <- function(input, output, session) {
     })
     output$wind_rt_plot <- renderPlot({
         click <- rv$click_wind_rt
+        autoInvalidatwind_rt_graph()
         if(is.null(click)) {
             # No plot necessary
             return()

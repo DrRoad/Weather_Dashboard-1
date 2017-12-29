@@ -122,7 +122,7 @@ server <- function(input, output, session) {
         return(df_ID_data_raw)
     })
     ID_data <- eventReactive({rv$ID_last_processed_time}, {
-        df_ID_data_raw()
+        df_ID_data_raw <- df_ID_data_raw()
 
         unique_datetimes <- df_ID_data_raw$datetime %>% unique
         countries <- c(df_ID_data_raw$country_from %>% unique, df_ID_data_raw$country_to %>% unique) %>% unique

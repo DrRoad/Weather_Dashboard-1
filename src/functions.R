@@ -31,7 +31,7 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
                         maximal_datetime,
                         table_name)
     }
-    a = run.query(stmt)
+    a = run.query(stmt, 'MOAD')  #Mother of all Data
     return(a$result)
 }
 
@@ -81,7 +81,7 @@ import_data_sql_meteosat <- function(max_hours_back=1, max_hours_forward=1) {
                     minimal_datetime,
                     maximal_datetime)
 
-    a <- run.query(stmt)
+    a <- run.query(stmt, 'MeteoSat')
     return(a$result)
 }
 
@@ -100,12 +100,38 @@ import_data_sql_modelrun_compare <- function(model, max_hours_back=4, max_hours_
                         minimal_datetime,
                         maximal_datetime,
                         minimal_model_date)
+    } else if (model == 'HIRLAM') {
+        stmt <- sprintf(stmt_hirlam_modelruns %>% strwrap(width=10000, simplify=TRUE),
+                        minimal_datetime,
+                        maximal_datetime,
+                        minimal_model_date)
     }
-    a = run.query(stmt)
+    a = run.query(stmt, 'modelrun_compare')
     return(a$result)
 }
 
-run.query <- function(stmt) {
+get_ID_data <- function(date=Sys.Date()) {
+    minimal_datetime <- date %>%
+        as.POSIXct %>%
+        with_tz('Europe/Amsterdam') %>%
+        trunc('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+    maximal_datetime <- (date + 1) %>%
+        as.POSIXct %>%
+        with_tz('Europe/Amsterdam') %>%
+        trunc('days') %>%
+        with_tz('UTC') %>%
+        strftime('%Y-%m-%d %H:%M:%S')
+
+    stmt <- sprintf(stmt_ID_data %>% strwrap(width=10000, simplify=TRUE),
+            minimal_datetime,
+            maximal_datetime)
+    a <- run.query(stmt, 'ID_data')
+    return(a$result)
+}
+
+run.query <- function(stmt, short_name = 'Empty. Fill me!') {
     # press start on stopwatch
     ptm <- proc.time()
     # make connection
@@ -121,7 +147,7 @@ run.query <- function(stmt) {
     result <- suppressWarnings(dbGetQuery(conn, stmt))
     # time logging
     time <- round(as.numeric((proc.time() - ptm)["elapsed"]), 2)
-    print(sprintf("Query took %.2f seconds", time))
+    print(sprintf("Query took %.2f seconds (%s)", time, short_name))
     return(list(
         result=result,
         time=time
@@ -209,7 +235,9 @@ get_gfs_history <- function(lat, lon, datetimes) {
                     datetimes$datetime_begin,
                     datetimes$datetime_end,
                     lat,
-                    lon)
+                    lon,
+                    datetimes$datetime_begin,
+                    datetimes$datetime_end)
     df_gfs_history_plot <- run.query(stmt)$result
     df_gfs_history_plot$datetime <- df_gfs_history_plot$datetime %>% as.POSIXct %>% with_tz('Europe/Amsterdam')
     return(df_gfs_history_plot)
@@ -313,3 +341,54 @@ change_input_to_column_name <- function(input_date, model, observable) {
                 gsub(" ", '_', .)
     )
 }
+
+convert_click_to_coordinates <- function(e) {
+    if(is.null(e)) return(NULL)
+    list(lon=round(e$lng, 3), lat=round(e$lat, 3))
+}
+
+create_graphs_from_raw_ID_data <- function(df_ID_data_raw, unique_datetimes) {
+    unique_datetimes <- df_ID_data_raw$datetime %>% unique
+
+    list_graphs <- lapply(seq(1, length(unique_datetimes)), FUN=function(i) {
+        d <- df_ID_data_raw[df_ID_data_raw$datetime == unique_datetimes[i], c('country_from', 'country_to', 'value')]
+        names(d) <- c('from', 'to', 'w')
+        g <- graph_from_data_frame(d)
+    })
+    return(list_graphs)
+}
+
+create_initial_empty_ID_data <- function(countries, unique_datetimes) {
+    lapply(seq(1, length(unique_datetimes)), FUN=function(i) {
+        df_temp <- data.frame(row.names=countries)
+        df_temp[, countries] <- 0
+        df_temp
+    })
+}
+
+calculate_all_paths <- function(list_graphs, ID_data, df_ID_data_raw) {
+    aggregate_ID <- aggregate(df_ID_data_raw$value, by=list(df_ID_data_raw$datetime), sum)$x
+    for (i in seq(1, length(unique_datetimes))) {
+        if (aggregate_ID[[i]] == 0) {next}
+        g <- list_graphs[[i]]
+        for (country_to in countries) {
+            for (country_from in countries) {
+                if (country_from == country_to) {
+                    next
+                }
+
+                paths <- all_simple_paths(g, from=country_from, to=country_to)
+                volumes <- sapply(paths,
+                                  FUN = function(x)
+                                      # This function calculates the possible volume between countries.
+                                      # In case of price stuff, that should be included here
+                                      min(E(g, path=x)$w)
+                )
+                ID_data[[i]][country_from, country_to] <- max(volumes)
+
+            }
+        }
+    }
+    return(ID_data)
+}
+

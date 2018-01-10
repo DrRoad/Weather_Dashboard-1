@@ -379,19 +379,19 @@ server <- function(input, output, session) {
                       title="Difference",
                       layerId='circlemarkers_legend')
     })
-	observeEvent({df_modelrun_compare_raster(); input$model_compare_bool}, {
-	    if (!input$model_compare_bool) {
-	        # This plots the comparison, so the bool should be True!
-	        return()
-	    }
-	    df_modelrun_compare_raster <- df_modelrun_compare_raster()
-	    leafletProxy('map') %>%
-	        clearGroup('model')
-	    if (nrow(df_modelrun_compare_raster) == 0) {return()}
-	    leafletProxy('map') %>%
-	        clearControls %>%
-	        addRasterImage(df_modelrun_compare_raster,
-	                       color=cpalet_circlemarkers(),
+    observeEvent({df_modelrun_compare_raster(); input$model_compare_bool}, {
+        if (!input$model_compare_bool) {
+            # This plots the comparison, so the bool should be True!
+            return()
+        }
+        df_modelrun_compare_raster <- df_modelrun_compare_raster()
+        leafletProxy('map') %>%
+            clearGroup('model')
+        if (nrow(df_modelrun_compare_raster) == 0) {return()}
+        leafletProxy('map') %>%
+            clearControls %>%
+            addRasterImage(df_modelrun_compare_raster,
+                           color=cpalet_circlemarkers(),
 	                       opacity=0.5,
 	                       group='model') %>%
 	        addLegend(pal=cpalet_circlemarkers(),
@@ -456,7 +456,8 @@ server <- function(input, output, session) {
                              color='black',
                              fillOpacity=1,
                              opacity=1,
-                             group='KNMI_markers')
+                             group='KNMI_markers',
+                             layerId=df_knmi$knmi_name)
     })
     observeEvent({df_owm(); input$owm_switch}, {
         leafletProxy('map') %>%
@@ -483,7 +484,8 @@ server <- function(input, output, session) {
                              color='orange',
                              fillOpacity=1,
                              opacity=1,
-                             group='OWM_markers')
+                             group='OWM_markers',
+                             layerId=df_owm$owm_name)
     })
     observeEvent({df_metoffice(); input$metoffice_switch}, {
         leafletProxy('map') %>%

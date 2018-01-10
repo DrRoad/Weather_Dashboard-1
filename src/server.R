@@ -123,6 +123,7 @@ server <- function(input, output, session) {
     })
     ID_data <- eventReactive({rv$ID_last_processed_time}, {
         df_ID_data_raw <- df_ID_data_raw()
+        if (df_ID_data_raw %>% nrow == 0) {return(data.frame())}
 
         unique_datetimes <- df_ID_data_raw$datetime %>% unique
         countries <- c(df_ID_data_raw$country_from %>% unique, df_ID_data_raw$country_to %>% unique) %>% unique
@@ -143,6 +144,7 @@ server <- function(input, output, session) {
     up_ID <- reactive({
         print('up_ID')
         ID_data <- ID_data()
+        if (ID_data %>% nrow == 0) {return(data.frame())}
         up_ID <- lapply(ID_data, function(x) (-1. * x[input$ID_choice, ])) %>% melt(id=NULL)
         up_ID$L1 <- up_ID$L1 /4 -.125
         up_ID
@@ -150,6 +152,7 @@ server <- function(input, output, session) {
     })
     down_ID <- reactive({
         ID_data <- ID_data()
+        if (ID_data %>% nrow == 0) {return(data.frame())}
         down_ID <- lapply(ID_data, function(x) x[, input$ID_choice, drop=FALSE] %>% t) %>% melt
         down_ID$L1 <- down_ID$L1 /4 -.125
         down_ID
@@ -763,6 +766,7 @@ server <- function(input, output, session) {
     observeEvent({df_ID_data_raw()}, {
         print('here')
         df_ID_data_raw <- df_ID_data_raw()
+        if (df_ID_data_raw %>% nrow == 0) {return()}
         if (df_ID_data_raw$processed_time %>% max> rv$ID_last_processed_time) {
             rv$ID_last_processed_time <<- df_ID_data_raw$processed_time %>% max
         }
@@ -771,6 +775,7 @@ server <- function(input, output, session) {
         print('plot')
         up_ID() %>% head %>% print
         input$ID_choice %>% print
+        if (up_ID() %>% nrow == 0) (return())
         p <- ggplot() +
             geom_bar(data=up_ID(),
                      aes(x=L1,

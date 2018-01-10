@@ -31,16 +31,20 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
                         maximal_datetime,
                         table_name)
     }
+    print(minimal_datetime)
+    print(maximal_datetime)
+    print(table_name)
+    print(stmt)
     a = run.query(stmt, 'MOAD')  #Mother of all Data
     return(a$result)
 }
 
 get_table_name_view <- function(minimal_datetime, maximal_datetime, model) {
     if (model == 'HIRLAM') {
-        start_value_hirlam <- time_diff(minimal_datetime, basetime, 72)
-        end_value_hirlam <- time_diff(maximal_datetime, basetime, 72)
-        start_value_other <- time_diff(minimal_datetime, basetime, 48)
-        end_value_other <- time_diff(maximal_datetime, basetime, 48)
+        start_value_hirlam <- time_diff(minimal_datetime, basetime, 72) %>% as.integer
+        end_value_hirlam <- time_diff(maximal_datetime, basetime, 72) %>% as.integer
+        start_value_other <- time_diff(minimal_datetime, basetime, 48) %>% as.integer
+        end_value_other <- time_diff(maximal_datetime, basetime, 48) %>% as.integer
         if (start_value_hirlam < end_value_hirlam) {
             if (start_value_other < end_value_other) {
                 table_name = 'weather_sources_view_hirlam_11'
@@ -52,10 +56,10 @@ get_table_name_view <- function(minimal_datetime, maximal_datetime, model) {
         }
     }
     if (model == 'GFS') {
-        start_value_gfs <- time_diff(minimal_datetime, basetime, 432)
-        end_value_gfs <- time_diff(maximal_datetime, basetime, 432)
-        start_value_other <- time_diff(minimal_datetime, basetime, 48)
-        end_value_other <- time_diff(maximal_datetime, basetime, 48)
+        start_value_gfs <- time_diff(minimal_datetime, basetime, 432) %>% as.integer
+        end_value_gfs <- time_diff(maximal_datetime, basetime, 432) %>% as.integer
+        start_value_other <- time_diff(minimal_datetime, basetime, 48) %>% as.integer
+        end_value_other <- time_diff(maximal_datetime, basetime, 48) %>% as.integer
         if (start_value_gfs < end_value_gfs) {
             if (start_value_other < end_value_other) {
                 table_name = 'weather_sources_view_gfs_11'

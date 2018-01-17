@@ -139,13 +139,13 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                calculate_all_paths(list_graphs, ID_data, df_ID_data_raw)
+                calculate_all_paths(list_graphs, ID_data, df_ID_data_raw, unique_datetimes, countries)
             })
     })
     up_ID <- reactive({
         print('up_ID')
         ID_data <- ID_data()
-        if (ID_data %>% nrow == 0) {return(data.frame())}
+        if (ID_data %>% length == 0) {return(data.frame())}
         up_ID <- lapply(ID_data, function(x) (-1. * x[input$ID_choice, ])) %>% melt(id=NULL)
         up_ID$L1 <- up_ID$L1 /4 -.125
         up_ID
@@ -153,7 +153,7 @@ server <- function(input, output, session) {
     })
     down_ID <- reactive({
         ID_data <- ID_data()
-        if (ID_data %>% nrow == 0) {return(data.frame())}
+        if (ID_data %>% length == 0) {return(data.frame())}
         down_ID <- lapply(ID_data, function(x) x[, input$ID_choice, drop=FALSE] %>% t) %>% melt
         down_ID$L1 <- down_ID$L1 /4 -.125
         down_ID

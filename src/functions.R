@@ -362,7 +362,7 @@ create_initial_empty_ID_data <- function(countries, unique_datetimes) {
     })
 }
 
-calculate_all_paths <- function(list_graphs, ID_data, df_ID_data_raw) {
+calculate_all_paths <- function(list_graphs, ID_data, df_ID_data_raw, unique_datetimes, countries) {
     aggregate_ID <- aggregate(df_ID_data_raw$value, by=list(df_ID_data_raw$datetime), sum)$x
     for (i in seq(1, length(unique_datetimes))) {
         if (aggregate_ID[[i]] == 0) {next}

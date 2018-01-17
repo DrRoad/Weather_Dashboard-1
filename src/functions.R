@@ -284,15 +284,7 @@ get_gfs_history_apx <- function(lat, lon, datetimes) {
 create_observation_history_plot <- function(click, datetimes, df, observable) {
     # group can either be knmi, owm or metoffice
     group <- click$group %>% str_split('_') %>% unlist %>% head(1) %>% tolower
-
-    lat_column <- sprintf("%s_lat", group)
-    lon_column <- sprintf("%s_lon", group)
-    name_column <- sprintf("%s_name", group)
-
-    df <- df[!is.na(df[[name_column]]), ]
-    name <- df[(df[[lat_column]] == click$lat) &
-                   (df[[lon_column]] == click$lng),
-               name_column]
+    name <- click$id
 
     df_observation_history <- get_historic_observation_data(click, group, datetimes, name)
 

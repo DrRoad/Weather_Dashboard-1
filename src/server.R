@@ -14,6 +14,7 @@ pacman::p_load(shiny,
                igraph)
 
 source("functions.R")
+# test
 source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,

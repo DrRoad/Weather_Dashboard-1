@@ -10,9 +10,7 @@ pacman::p_load(shiny,
                reshape2,
                magrittr,
                grDevices,
-               data.table,
-               igraph)
-
+               data.table)
 source("functions.R")
 # test
 source("declarations.R")
@@ -27,8 +25,6 @@ rv <- reactiveValues(knmi_station_history = NULL,
 server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
-    autoInvalidate_IGCC <- reactiveTimer(4 * 60 * 1000, session)
-    autoInvalidate_ID <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
     autoInvalidatwind_rt_graph <- reactiveTimer(1 * 60 * 1000, session)
     # Dataframes build up ----
@@ -49,11 +45,11 @@ server <- function(input, output, session) {
             })
         return(df_raw_sql)
     })
-	df_meteosat_sql_raw <- reactive({
+    df_meteosat_sql_raw <- reactive({
         # To update every x minutes, there is this autoInvalidate
-	    autoInvalidate_data_fetch_sql()
-	    input$refresh_data
-	    if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
+        autoInvalidate_data_fetch_sql()
+        input$refresh_data
+        if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
 
         df_meteosat_sql_raw <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
@@ -111,52 +107,11 @@ server <- function(input, output, session) {
         df_modelrun_compare_all <- df_modelrun_compare_all()
         if (nrow(df_modelrun_compare_all)==0) {return(data.frame())}
         df_modelrun_compare <- dcast(setDT(df_modelrun_compare_all),
-                                    datetime + lat + lon ~ model_date + model_run,
-                                    value.var=value.var) %>%
+                                     datetime + lat + lon ~ model_date + model_run,
+                                     value.var=value.var) %>%
             data.frame
 
         return(df_modelrun_compare)
-    })
-    df_ID_data_raw <- reactive({
-        df_ID_data_raw <- get_ID_data()
-
-        return(df_ID_data_raw)
-    })
-    ID_data <- eventReactive({rv$ID_last_processed_time}, {
-        df_ID_data_raw <- df_ID_data_raw()
-        if (df_ID_data_raw %>% nrow == 0) {return(data.frame())}
-
-        unique_datetimes <- df_ID_data_raw$datetime %>% unique
-        countries <- c(df_ID_data_raw$country_from %>% unique, df_ID_data_raw$country_to %>% unique) %>% unique
-
-        list_graphs <- create_graphs_from_raw_ID_data(df_ID_data_raw, unique_datetimes)
-        ID_data <- create_initial_empty_ID_data(countries, unique_datetimes)
-        ID_data <-
-        ID_data <- withProgress(
-            message='Obtaining ID paths from graph',
-            detail='Happy New Year! Mathias',
-            value=NULL,
-            style='old',
-            {
-                # The actual data fetching
-                calculate_all_paths(list_graphs, ID_data, df_ID_data_raw, unique_datetimes, countries)
-            })
-    })
-    up_ID <- reactive({
-        print('up_ID')
-        ID_data <- ID_data()
-        if (ID_data %>% length == 0) {return(data.frame())}
-        up_ID <- lapply(ID_data, function(x) (-1. * x[input$ID_choice, ])) %>% melt(id=NULL)
-        up_ID$L1 <- up_ID$L1 /4 -.125
-        up_ID
-
-    })
-    down_ID <- reactive({
-        ID_data <- ID_data()
-        if (ID_data %>% length == 0) {return(data.frame())}
-        down_ID <- lapply(ID_data, function(x) x[, input$ID_choice, drop=FALSE] %>% t) %>% melt
-        down_ID$L1 <- down_ID$L1 /4 -.125
-        down_ID
     })
 
     compared_time <- reactive({
@@ -181,12 +136,12 @@ server <- function(input, output, session) {
         return(compared_time)
     })
 
-	model_observable <- reactive({
-		if (input$model == 'GFS') {
-			return(conversion_list_GFS[[input$observable]])}
-		if (input$model == 'HIRLAM') {
-			return(conversion_list_HIRLAM[[input$observable]])}
-	})
+    model_observable <- reactive({
+        if (input$model == 'GFS') {
+            return(conversion_list_GFS[[input$observable]])}
+        if (input$model == 'HIRLAM') {
+            return(conversion_list_HIRLAM[[input$observable]])}
+    })
     # Dataframes to be used in the dashboard ----
     df_model_raster <- reactive({
         df <- df()
@@ -195,20 +150,20 @@ server <- function(input, output, session) {
         df_model_raster <- raster_maker(df, observable_fc)
         return(df_model_raster)
     })
-	df_modelrun_compare_raster <- reactive({
-	    df_modelrun_compare <- df_modelrun_compare()
+    df_modelrun_compare_raster <- reactive({
+        df_modelrun_compare <- df_modelrun_compare()
         if (nrow(df_modelrun_compare) == 0) {return(data.frame())}
-	    if ('loading' %in% c(input$modelrun_base, input$modelrun_comp)) {return(data.frame())}
+        if ('loading' %in% c(input$modelrun_base, input$modelrun_comp)) {return(data.frame())}
 
-	    column_base <- change_input_to_column_name(input$modelrun_base, input$model, input$observable)
-	    column_comp <- change_input_to_column_name(input$modelrun_comp, input$model, input$observable)
+        column_base <- change_input_to_column_name(input$modelrun_base, input$model, input$observable)
+        column_comp <- change_input_to_column_name(input$modelrun_comp, input$model, input$observable)
 
-	    column_base %>% print
-	    column_comp %>% print
+        column_base %>% print
+        column_comp %>% print
         if (!(column_base %in% names(df_modelrun_compare) & column_comp %in% names(df_modelrun_compare))) {return(data.frame())}
-	    df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
-	    raster_maker(df_modelrun_compare, 'diff')
-	})
+        df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
+        raster_maker(df_modelrun_compare, 'diff')
+    })
     df_knmi <- reactive({
         df <- df()
         observable_knmi <- conversion_list_KNMI[[input$observable]]
@@ -238,7 +193,7 @@ server <- function(input, output, session) {
         observable_metoffice <- conversion_list_MetOffice[[input$observable]]
         observable_fc <- model_observable()
         df_metoffice <- df[!df[[observable_metoffice]] %>% is.na,
-                     c(observable_metoffice, observable_fc, 'metoffice_lat', 'metoffice_lon', 'metoffice_name')]
+                           c(observable_metoffice, observable_fc, 'metoffice_lat', 'metoffice_lon', 'metoffice_name')]
         df_metoffice <- df_metoffice[!duplicated(df_metoffice), ]
         names(df_metoffice)[c(1, 2)] <- c('metoffice', 'model')
         df_metoffice$dif <- df_metoffice$metoffice %>% as.numeric - df_metoffice$model
@@ -246,36 +201,36 @@ server <- function(input, output, session) {
         return(df_metoffice)
     })
     df_Meteosat_cot_raster <- reactive({
-		if (!input$Meteosat_clouds){return(data.frame())}
-	    df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        if (!input$Meteosat_clouds){return(data.frame())}
+        df_meteosat_sql_raw <- df_meteosat_sql_raw()
         df_Meteosat_cot_raster <- raster_maker(df_meteosat_sql_raw, 'cot')
-		return(df_Meteosat_cot_raster)
+        return(df_Meteosat_cot_raster)
     })
-	df_Meteosat_precip_raster <- reactive({
+    df_Meteosat_precip_raster <- reactive({
         if (!input$Meteosat_rain){return(data.frame())}
         df_meteosat_sql_raw <- df_meteosat_sql_raw()
         df_Meteosat_precip_raster <- raster_maker(df_meteosat_sql_raw, 'precip')
         return(df_Meteosat_precip_raster)
     })
-	df_lines <- reactive({
-	    if(!input$isobars) {return()}
-	    column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
-	                           'GFS'='gfs_air_pressure',
-	                           'HIRLAM'='hirlam_air_pressure')
+    df_lines <- reactive({
+        if(!input$isobars) {return()}
+        column_model <- switch(isolate(input$model), # not sure if the isolate should be here, but df() is also updating
+                               'GFS'='gfs_air_pressure',
+                               'HIRLAM'='hirlam_air_pressure')
 
-	    df <- df()
-	    # deduplicate df due to multiple observations at one location
-	    df <- df[!(df[, c('lon', 'lat', column_model)]) %>% duplicated, ]
-	    df <- df[do.call('order', df[c('lat', 'lon')]), ]
-	    lon <- df$lon %>% unique #%>% sort
-	    lat <- df$lat %>% unique #%>% sort
-	    z <- matrix(df[[column_model]], length(lon), byrow=FALSE)
-	    lines <- contourLines(lon, lat, z, levels=seq(948,1052,4))
+        df <- df()
+        # deduplicate df due to multiple observations at one location
+        df <- df[!(df[, c('lon', 'lat', column_model)]) %>% duplicated, ]
+        df <- df[do.call('order', df[c('lat', 'lon')]), ]
+        lon <- df$lon %>% unique #%>% sort
+        lat <- df$lat %>% unique #%>% sort
+        z <- matrix(df[[column_model]], length(lon), byrow=FALSE)
+        lines <- contourLines(lon, lat, z, levels=seq(948,1052,4))
 
-	    return(lines)
-	})
+        return(lines)
+    })
     # colorpalettes, domains and other boring stuff ----
-	observeEvent({df_modelrun_compare_all(); input$model}, {
+    observeEvent({df_modelrun_compare_all(); input$model}, {
         df_modelrun_compare_all <- df_modelrun_compare_all()
         if (df_modelrun_compare_all %>% nrow == 0) {return()}
         df_modelrun_compare_all$model_date <- df_modelrun_compare_all$model_date %>%
@@ -303,8 +258,8 @@ server <- function(input, output, session) {
                           'modelrun_comp',
                           choices=choices,
                           selected=selected_comp)
-	})
-	domain_model <- reactive ({
+    })
+    domain_model <- reactive ({
         list("Windspeed"=c(0, 25),
              "Temperature"=c(-10, 35),
              "Air pressure"=c(950, 1050),
@@ -393,15 +348,15 @@ server <- function(input, output, session) {
             clearControls %>%
             addRasterImage(df_modelrun_compare_raster,
                            color=cpalet_circlemarkers(),
-	                       opacity=0.5,
-	                       group='model') %>%
-	        addLegend(pal=cpalet_circlemarkers(),
-	                  values=domain_diff() %>% rev,
-	                  title=sprintf("%s diff", input$observable),
-	                  layerId='model_legend')
-	})
+                           opacity=0.5,
+                           group='model') %>%
+            addLegend(pal=cpalet_circlemarkers(),
+                      values=domain_diff() %>% rev,
+                      title=sprintf("%s diff", input$observable),
+                      layerId='model_legend')
+    })
     observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
-	    df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
+        df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
             clearGroup('MeteoSat_cot')
         if(df_Meteosat_cot_raster %>% typeof == 'list') {
@@ -412,26 +367,26 @@ server <- function(input, output, session) {
             # clearGroup('contourlines') %>%
             # clearGroup('HL') %>%
             addRasterImage(log10(df_Meteosat_cot_raster),
-                               color=colors_MeteoSat_cot,
-                               opacity=0.45,
-                               group='MeteoSat_cot')
+                           color=colors_MeteoSat_cot,
+                           opacity=0.45,
+                           group='MeteoSat_cot')
     })
-	observeEvent({df_Meteosat_precip_raster(); input$Meteosat_rain}, {
-	    df_Meteosat_precip_raster <- df_Meteosat_precip_raster()
-	    leafletProxy('map') %>%
-	        clearGroup('MeteoSat_precip')
-	    if(df_Meteosat_precip_raster %>% typeof == 'list') {
-	        # Returned empty from function before
-	        return()
-	    }
-	    leafletProxy('map') %>%
-	        # clearGroup('contourlines') %>%
-	        # clearGroup('HL') %>%
-	        addRasterImage(log10(df_Meteosat_precip_raster),
-	                       color=colors_MeteoSat_precip,
-	                       opacity=0.45,
-	                       group='MeteoSat_precip')
-	})
+    observeEvent({df_Meteosat_precip_raster(); input$Meteosat_rain}, {
+        df_Meteosat_precip_raster <- df_Meteosat_precip_raster()
+        leafletProxy('map') %>%
+            clearGroup('MeteoSat_precip')
+        if(df_Meteosat_precip_raster %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
+            # clearGroup('contourlines') %>%
+            # clearGroup('HL') %>%
+            addRasterImage(log10(df_Meteosat_precip_raster),
+                           color=colors_MeteoSat_precip,
+                           opacity=0.45,
+                           group='MeteoSat_precip')
+    })
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
             clearGroup('KNMI_markers')
@@ -593,7 +548,7 @@ server <- function(input, output, session) {
         df <- df()
         df_wind <- df[df$lat %% 1 ==0 & df$lon %% 1 == 0, ]
         icon <- icons(wind_directions_location[if (input$model == 'GFS'){df_wind$gfs_wind_direction}
-											   else if (input$model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
+                                               else if (input$model == 'HIRLAM'){df_wind$hirlam_wind_direction} %>%
                                                    divide_by(22.5) %>%
                                                    round(0) %>%
                                                    multiply_by(22.5) %>%
@@ -648,8 +603,8 @@ server <- function(input, output, session) {
         }
         df <- df()
         column_model <- switch(isolate(input$model),
-                         'GFS'='gfs_air_pressure',
-                         'HIRLAM'='hirlam_air_pressure')
+                               'GFS'='gfs_air_pressure',
+                               'HIRLAM'='hirlam_air_pressure')
         dataH <- df[(df[[column_model]] %>% max) == df[[column_model]], ]
         dataH <- dataH[sample(nrow(dataH), 1), ]
         dataH$text <- 'H'
@@ -766,133 +721,5 @@ server <- function(input, output, session) {
         }
         return(p)
     })
-    observeEvent({df_ID_data_raw()}, {
-        print('here')
-        df_ID_data_raw <- df_ID_data_raw()
-        if (df_ID_data_raw %>% nrow == 0) {return()}
-        if (df_ID_data_raw$processed_time %>% max> rv$ID_last_processed_time) {
-            rv$ID_last_processed_time <<- df_ID_data_raw$processed_time %>% max
-        }
-    })
-    output$ID_plot <- renderPlot({
-        print('plot')
-        up_ID() %>% head %>% print
-        input$ID_choice %>% print
-        if (up_ID() %>% nrow == 0) (return())
-        p <- ggplot() +
-            geom_bar(data=up_ID(),
-                     aes(x=L1,
-                         y=value,
-                         fill=variable),
-                     stat='identity',
-                     color='black',
-                     width=.25) +
-            geom_bar(data=down_ID(),
-                     aes(x=L1,
-                         y=value,
-                         fill=Var2),
-                     stat='identity',
-                     color='black',
-                     width=.25) +
-            scale_fill_manual(values=coloring_ID) +
-            scale_x_continuous(expand=c(0,0), breaks=seq(0,24,1), minor_breaks = seq(0,25,1)) +
-            geom_hline(aes(yintercept=0), size=2) +
-            xlab('Hour') + ylab('MW')
-        p <- p + annotate("text",
-                          x= -Inf,
-                          y = Inf,
-                          hjust=0,
-                          vjust=1,
-                          label=paste0("Importing into ", input$ID_choice)
-        )
-        p <- p + annotate("text",
-                          x= -Inf,
-                          y = -Inf,
-                          hjust=0,
-                          vjust=-1,
-                          label=paste0("Exporting from ", input$ID_choice)
-        ) + theme(legend.position = 'bottom') +
-            guides(fill = guide_legend(nrow=1))
-        return(p)
-    })
-    # IGCC ----
-    IGCC_data <- reactive({
-        autoInvalidate_IGCC()
-        df_IGCC <- withProgress(
-            # This part takes care of showing the notifcation when data is fetched
-            message='Fetching IGCC data',
-            detail='Always and truly, Mathias',
-            value=NULL,
-            style='old',
-            {
-                # The actual data fetching
-                get_IGCC_data()
-            })
-        return(df_IGCC)
-    })
-    IGCC_data_export <- reactive({
-        df_IGCC <- IGCC_data()
-        export <- names(df_IGCC)[grepl(names(df_IGCC), pattern='export_vol')]
-        IGCC_data_export <- df_IGCC[, c('datetime', export)]
-        export <- export %>% str_sub(1, 2) %>% toupper
-        names(IGCC_data_export) <- c('datetime', export)
 
-        IGCC_data_export <- IGCC_data_export%>% melt(id.vars='datetime') %>% na.omit
-
-        return(IGCC_data_export)
-    })
-    IGCC_data_import <- reactive({
-        df_IGCC <- IGCC_data()
-        import <- names(df_IGCC)[grepl(names(df_IGCC), pattern='import_vol')]
-        IGCC_data_import <- df_IGCC[, c('datetime', import)]
-        import <- import %>% str_sub(1, 2) %>% toupper
-        names(IGCC_data_import) <- c('datetime', import)
-        IGCC_data_import[, import] <- -1. * IGCC_data_import[, import]
-        IGCC_data_import <- IGCC_data_import%>% melt(id.vars='datetime') %>% na.omit
-        return(IGCC_data_import)
-    })
-    output$igcc_plot <- renderPlot({
-        ggplot() +
-            geom_bar(data=IGCC_data_import(),
-                     aes(x=datetime,
-                         y=value,
-                         group=variable,
-                         fill=variable),
-                     width=15*60,
-                     color='black',
-                     stat='identity') +
-            geom_bar(data=IGCC_data_export(),
-                     aes(x=datetime,
-                         y=value,
-                         group=variable,
-                         fill=variable),
-                     width=15*60,
-                     color='black',
-                     stat='identity') +
-            scale_fill_manual(values=coloring_IGCC) +
-            scale_x_datetime(limits=c(Sys.Date() %>% as.POSIXct %>% with_tz('Europe/Amsterdam') %>% trunc('days') %>% as.POSIXct,
-                                     (Sys.Date() +1) %>% as.POSIXct) %>% with_tz('Europe/Amsterdam')  %>% trunc('days') %>% as.POSIXct,
-                             breaks=date_breaks('2 hours'),
-                             expand=c(0, 0),
-                             minor_breaks=date_breaks('1 hours'),
-                             labels=date_format("%H", tz='Europe/Amsterdam')) +
-            geom_hline(aes(yintercept=0), size=2) +
-            ylab('MW') +
-            xlab('Time') +
-            annotate("text",
-                     x = Sys.Date() %>% as.POSIXct,
-                     y = Inf,
-                     vjust = 1,
-                     hjust=0,
-                     label = "Exported"
-            ) +
-            annotate("text",
-                     x = Sys.Date() %>% as.POSIXct,
-                     y = -Inf,
-                     vjust=-.1,
-                     hjust=0,
-                     label="Imported"
-            ) + theme(legend.position = 'bottom') +
-            guides(fill = guide_legend(nrow=1))
-    })
 }

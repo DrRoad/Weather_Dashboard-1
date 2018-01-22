@@ -9,7 +9,7 @@ pacman::p_load(shiny,
 
 
 ui <- dashboardPage(title="Weather Dashboard",
-
+                    
                     dashboardHeader(title= "Weather Dashboard 2.0"),
                     dashboardSidebar(
                         includeCSS("styles.css"),
@@ -89,22 +89,22 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 handleWidth='30px')
                                 ),
                                 div(
-                                  style='height: 25px;',
-                                  switchInput('Meteosat_clouds',
-                                              label='Clouds',
-                                              size='small',
-                                              value=FALSE,
-                                              labelWidth='60px',
-                                              handleWidth='30px')
+                                    style='height: 25px;',
+                                    switchInput('Meteosat_clouds',
+                                                label='Clouds',
+                                                size='small',
+                                                value=FALSE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
                                 ),
                                 div(
-                                  style='height: 25px;',
-                                  switchInput('Meteosat_rain',
-                                              label='Rain',
-                                              size='small',
-                                              value=FALSE,
-                                              labelWidth='60px',
-                                              handleWidth='30px')
+                                    style='height: 25px;',
+                                    switchInput('Meteosat_rain',
+                                                label='Rain',
+                                                size='small',
+                                                value=FALSE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
                                 )
                             ),
                             HTML("<br/>"),
@@ -140,11 +140,11 @@ ui <- dashboardPage(title="Weather Dashboard",
                                        )
                                 )
                             ),
-							pickerInput('model',
-                                    label='Model',
-                                    choices = c('GFS',
-                                                'HIRLAM'),
-                                    selected = 'HIRLAM'),
+                            pickerInput('model',
+                                        label='Model',
+                                        choices = c('GFS',
+                                                    'HIRLAM'),
+                                        selected = 'HIRLAM'),
                             pickerInput('observable',
                                         label='Observable',
                                         choices=c('Temperature',
@@ -156,32 +156,32 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    "glyphicon glyphicon-dashboard",
                                                                    "glyphicon-certificate")),
                                         selected='Temperature'),
-							textOutput('click_value'),
-							box(title='Model compare',
-							    solidHeader=FALSE,
-							    collapsible=TRUE,
-							    collapsed=FALSE,
-							    color='olive',
-							    background='navy',
-							    width='100%',
-							    heigth=300,
-							    switchInput('model_compare_bool',
-							                label='Compare run',
-							                size='small',
-							                value=FALSE,
-							                labelWidth='75px',
-							                handleWidth='30px'
-							    ),
-
-							    pickerInput('modelrun_base',
-							                'Base run',
-							                choices=list('Loading'='loading')
-							    ),
-							    pickerInput('modelrun_comp',
-							                'Compared to',
-							                choices=list('Loading'='loading')
-							    )
-							)
+                            textOutput('click_value'),
+                            box(title='Model compare',
+                                solidHeader=FALSE,
+                                collapsible=TRUE,
+                                collapsed=FALSE,
+                                color='olive',
+                                background='navy',
+                                width='100%',
+                                heigth=300,
+                                switchInput('model_compare_bool',
+                                            label='Compare run',
+                                            size='small',
+                                            value=FALSE,
+                                            labelWidth='75px',
+                                            handleWidth='30px'
+                                ),
+                                
+                                pickerInput('modelrun_base',
+                                            'Base run',
+                                            choices=list('Loading'='loading')
+                                ),
+                                pickerInput('modelrun_comp',
+                                            'Compared to',
+                                            choices=list('Loading'='loading')
+                                )
+                            )
                         ),
                         conditionalPanel(condition="input.conditionedPanels==2",
                                          helpText("Dos")
@@ -191,7 +191,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                         )
                     ),
                     dashboardBody({
-
+                        
                         tabsetPanel(
                             id = "conditionedPanels",
                             tabPanel('One',
@@ -209,39 +209,6 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 offset=0,
                                                 style='padding: 0px;',
                                                 align='center',
-                                                box(title='ID capacity',
-                                                    solidHeader=FALSE,
-                                                    collapsible=TRUE,
-                                                    color='lime',
-                                                    width=12,
-                                                    heigth=300,
-                                                    fluidRow(
-                                                        pickerInput('ID_choice',
-                                                                    NULL,
-                                                                    choices=list('Netherlands',
-                                                                                 'Belgium',
-                                                                                 'Denmark',
-                                                                                 'France',
-                                                                                 'Germany',
-                                                                                 'Switzerland')
-                                                                    ),
-                                                        plotOutput('ID_plot',
-                                                                   height="250",
-                                                                   width="90%")
-                                                    )
-                                                ),
-                                                box(title='IGCC',
-                                                    solidHeader=FALSE,
-                                                    collapsible=TRUE,
-                                                    color='lime',
-                                                    width=12,
-                                                    heigth=300,
-                                                    fluidRow(
-                                                        plotOutput('igcc_plot',
-                                                                   height="250",
-                                                                   width="90%")
-                                                    )
-                                                ),
                                                 box(title='Historic observations',
                                                     solidHeader=FALSE,
                                                     collapsible=TRUE,

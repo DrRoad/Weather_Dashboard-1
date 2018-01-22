@@ -715,7 +715,8 @@ server <- function(input, output, session) {
                              breaks=date_breaks('1 hours'),
                              labels=date_format("%H:%M", tz='Europe/Amsterdam')) +
             ylab('Power (MW)') +
-            xlab('Time')
+            xlab('Time') +
+            ggtitle(df$sitename[1])
         if (df$datasignalValue %>% min > 0) {
             p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
         }

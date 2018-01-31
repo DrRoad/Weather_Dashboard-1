@@ -84,30 +84,35 @@ stmt_gfs_history <- "SELECT gfs.datetime as datetime,
     gfs.10_metre_wind_speed_level_10 as gfs_wind_speed,
     gfs.downward_short_wave_radiation_flux_level_0 as gfs_radiation,
     gfs.surface_pressure_level_0 as gfs_air_pressure
-    FROM gfs_data_source gfs INNER JOIN
+    FROM l_gfs_data_source gfs INNER JOIN
     (
         SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
-        FROM gfs_data_source
-        WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
-              AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
+        FROM l_gfs_data_source
+
+
+        WHERE datetime >='%s'
+              AND datetime <'%s'
               AND lat = %.2f
               AND lon = %.2f
         GROUP BY datetime, lat, lon
     ) gfs2 ON gfs.lon = gfs2.lon
               AND gfs.lat = gfs2.lat
               AND gfs.datetime = gfs2.datetime
-              AND gfs.hours_ahead = gfs2.hours_ahead
-where gfs.partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432
-      AND partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432"
+
+
+
+              AND gfs.hours_ahead = gfs2.hours_ahead"
 
 stmt_gfs_history_apx <- "SELECT datetime,
                                 2_metre_temperature_level_2 as gfs_temp,
                                 10_metre_wind_speed_level_10 as gfs_wind_speed,
                                 downward_short_wave_radiation_flux_level_0 as gfs_radiation,
                                 surface_pressure_level_0 as gfs_air_pressure
-FROM weatherforecast.gfs_data_source
-WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
-      partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432 AND
+FROM l_gfs_data_source
+
+
+WHERE datetime >='%s' AND
+      datetime <'%s' AND
       hours_ahead >= 17 AND
       hours_ahead <= 41 AND
       lat = %.2f AND
@@ -120,12 +125,14 @@ stmt_hirlam_history <- "SELECT hirlam.datetime as datetime,
                                hirlam.10_metre_wind_speed as hirlam_wind_speed,
                                hirlam.global_radiation_flux as hirlam_radiation,
                                hirlam.pressure as hirlam_air_pressure
-FROM hirlam_data_source hirlam INNER JOIN
+FROM l_hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
-    FROM hirlam_data_source
-    WHERE partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 AND
-          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72  AND
+    FROM l_hirlam_data_source
+
+
+    WHERE datetime >='%s' AND
+          datetime <'%s' AND
           lat = %.2f AND
           lon = %.2f
     GROUP BY datetime, lat, lon
@@ -136,12 +143,14 @@ stmt_hirlam_history_2 <- "SELECT hirlam.datetime as datetime,
                                  hirlam.10_metre_wind_speed as hirlam_wind_speed,
                                  hirlam.global_radiation_flux as hirlam_radiation,
                                  hirlam.pressure as hirlam_air_pressure
-FROM hirlam_data_source hirlam INNER JOIN
+FROM l_hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
-    FROM hirlam_data_source
-    WHERE (partition_col >= floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72 OR
-          partition_col < floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 72)  AND
+    FROM l_hirlam_data_source
+
+
+    WHERE datetime>='%s' AND
+          datetime <'%s' AND
           lat = %.2f AND
           lon = %.2f
     GROUP BY datetime, lat, lon

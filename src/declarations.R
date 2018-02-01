@@ -26,10 +26,11 @@ conversion_list_OWM <<- list("Windspeed"="owm_wind",
                              "Temperature"="owm_temp",
                              "Air pressure"="owm_air_pressure",
                              "Radiation"="owm_air_pressure") # Not available
+
 conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Temperature"="metoffice_temp",
                                    "Air pressure"="metoffice_air_pressure",
-                                   "Radiation"="metoffice_air_pressure")  # Not available
+                                   "Radiation"="metoffice_air_pressure") # Not available
 conversion_list_KNMI_plot <<- list("Windspeed"="ff",
                                    "Temperature"="ta",
                                    "Air pressure"="pp",

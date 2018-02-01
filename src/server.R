@@ -263,7 +263,7 @@ server <- function(input, output, session) {
         list("Windspeed"=c(0, 25),
              "Temperature"=c(-10, 35),
              "Air pressure"=c(950, 1050),
-             "Radiation"=c(-150, 150))[[input$observable]]
+             "Radiation"=c(0, 150))[[input$observable]]
     })
     cpalet_model_background <- reactive({
         options <- list("Windspeed"=colorNumeric(colorRampPalette(c("white", "white", "#66ffff", "#00ff99", "#00ff00", "#ffff00", "#ff9900", "#ff3300", "#ff0066", "#ff00ff"))(200),

@@ -26,7 +26,6 @@ conversion_list_OWM <<- list("Windspeed"="owm_wind",
                              "Temperature"="owm_temp",
                              "Air pressure"="owm_air_pressure",
                              "Radiation"="owm_air_pressure") # Not available
-
 conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Temperature"="metoffice_temp",
                                    "Air pressure"="metoffice_air_pressure",
@@ -89,8 +88,6 @@ stmt_gfs_history <- "SELECT gfs.datetime as datetime,
     (
         SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
         FROM l_gfs_data_source
-
-
         WHERE datetime >='%s'
               AND datetime <'%s'
               AND lat = %.2f
@@ -99,9 +96,6 @@ stmt_gfs_history <- "SELECT gfs.datetime as datetime,
     ) gfs2 ON gfs.lon = gfs2.lon
               AND gfs.lat = gfs2.lat
               AND gfs.datetime = gfs2.datetime
-
-
-
               AND gfs.hours_ahead = gfs2.hours_ahead"
 
 stmt_gfs_history_apx <- "SELECT datetime,
@@ -110,8 +104,6 @@ stmt_gfs_history_apx <- "SELECT datetime,
                                 downward_short_wave_radiation_flux_level_0 as gfs_radiation,
                                 surface_pressure_level_0 as gfs_air_pressure
 FROM l_gfs_data_source
-
-
 WHERE datetime >='%s' AND
       datetime <'%s' AND
       hours_ahead >= 17 AND
@@ -130,8 +122,6 @@ FROM l_hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
     FROM l_hirlam_data_source
-
-
     WHERE datetime >='%s' AND
           datetime <'%s' AND
           lat = %.2f AND
@@ -148,8 +138,6 @@ FROM l_hirlam_data_source hirlam INNER JOIN
 (
     SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
     FROM l_hirlam_data_source
-
-
     WHERE datetime>='%s' AND
           datetime <'%s' AND
           lat = %.2f AND

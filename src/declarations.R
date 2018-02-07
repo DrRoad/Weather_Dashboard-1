@@ -30,6 +30,18 @@ conversion_list_MetOffice <<- list("Windspeed"="metoffice_wind",
                                    "Temperature"="metoffice_temp",
                                    "Air pressure"="metoffice_air_pressure",
                                    "Radiation"="metoffice_air_pressure") # Not available
+conversion_list_Windy <<- list("Windspeed"="windyrt_wind",
+                                   "Temperature"="windyrt_temp",
+                                   "Air pressure"="windyrt_temp", # Not available
+                                   "Radiation"="windyrt_temp") # Not available
+conversion_list_ICONEU <<- list("Windspeed"="iconeu_wind",
+                               "Temperature"="iconeu_temp",
+                               "Air pressure"="iconeu_pressure",
+                               "Radiation"="iconeu_pressure") # Not available
+conversion_list_ECMWF <<- list("Windspeed"="ecmwf_wind",
+                                "Temperature"="ecmwf_temp",
+                                "Air pressure"="ecmwf_pressure",
+                                "Radiation"="ecmwf_pressure") # Not available
 conversion_list_KNMI_plot <<- list("Windspeed"="ff",
                                    "Temperature"="ta",
                                    "Air pressure"="pp",
@@ -41,13 +53,18 @@ conversion_list_OWM_plot <<- list("Windspeed"="wind_speed",
 conversion_list_metoffice_plot <<- list("Windspeed"="wind_speed",
                                         "Temperature"="temperature",
                                         "Air pressure"="pressure",
-                                        "Radiation"="pressure") # Not available
+                                        "Radiation"="pressure") # Not available,
+conversion_list_windy_plot <<- list("Windspeed"="wind",
+                                        "Temperature"="temp",
+                                        "Air pressure"="temp", # Not available
+                                        "Radiation"="temp") # Not available
 
 conversion_list_model <<- list('GFS' = conversion_list_GFS,
                                'HIRLAM' = conversion_list_HIRLAM)
 conversion_list_observations_plot <<- list("knmi"=conversion_list_KNMI_plot,
                                            "owm"=conversion_list_OWM_plot,
-                                           "metoffice"=conversion_list_metoffice_plot
+                                           "metoffice"=conversion_list_metoffice_plot,
+                                           "windy"=conversion_list_windy_plot
 )
 # Windparkfile
 Windparks_filename <- file.path(base_path, 'Windparks/windparks_Eneco.csv')
@@ -145,6 +162,43 @@ FROM l_hirlam_data_source hirlam INNER JOIN
     GROUP BY datetime, lat, lon
     ) hirlam2 on hirlam.lon = hirlam2.lon AND hirlam.lat = hirlam2.lat and hirlam.datetime = hirlam2.datetime and hirlam.hours_ahead = hirlam2.hours_ahead"
 
+stmt_iconeu_history <- "SELECT iconeu.datetime as datetime,
+    iconeu.temp as iconeu_temp,
+    iconeu.wind as iconeu_wind,
+    iconeu.temp as iconeu_radiation,
+    iconeu.pressure as iconeu_pressure
+    FROM windy_iconeu_data_source iconeu INNER JOIN
+    (
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM windy_iconeu_data_source
+    WHERE datetime >='%s'
+    AND datetime <'%s'
+    AND lat = %.2f
+    AND lon = %.2f
+    GROUP BY datetime, lat, lon
+    ) iconeu2 ON iconeu.lon = iconeu.lon
+    AND iconeu.lat = iconeu2.lat
+    AND iconeu.datetime = iconeu2.datetime
+    AND iconeu.hours_ahead = iconeu2.hours_ahead"
+
+stmt_ecmwf_history <- "SELECT ecmwf.datetime as datetime,
+    ecmwf.temp as ecmwf_temp,
+ecmwf.wind as ecmwf_wind,
+ecmwf.temp as ecmwf_radiation,
+ecmwf.pressure as ecmwf_pressure
+FROM windy_ecmwf_data_source ecmwf INNER JOIN
+(
+    SELECT datetime, lat, lon, MIN(hours_ahead) as hours_ahead
+    FROM windy_ecmwf_data_source
+    WHERE datetime >='%s'
+    AND datetime <'%s'
+    AND lat = %.2f
+    AND lon = %.2f
+    GROUP BY datetime, lat, lon
+) ecmwf2 ON ecmwf.lon = ecmwf.lon
+    AND ecmwf.lat = ecmwf2.lat
+    AND ecmwf.datetime = ecmwf2.datetime
+    AND ecmwf.hours_ahead = ecmwf2.hours_ahead"
 
 stmt_meteosat <- "SELECT * FROM weatherforecast.meteosat_data_source
 WHERE partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48
@@ -158,6 +212,16 @@ FROM metoffice_data_source mo1 INNER JOIN
     WHERE name = '%s' AND datetime >= '%s' AND datetime <= '%s'
     GROUP BY datetime
 ) mo2 on mo1.datetime = mo2.datetime AND mo1.processed_time = mo2.processed_time and mo1.name = mo2.name ORDER BY datetime"
+
+stmt_windy_history = "SELECT mo1.*
+FROM windy_rt_source mo1 INNER JOIN
+(
+    SELECT datetime, MAX(processed_time) as processed_time, name
+    FROM windy_rt_source
+    WHERE name = '%s' AND datetime >= '%s' AND datetime <= '%s'
+    GROUP BY datetime
+) mo2 on mo1.datetime = mo2.datetime AND mo1.processed_time = mo2.processed_time and mo1.name = mo2.name ORDER BY datetime"
+
 
 colors_MeteoSat_cot <- colorBin(c("#ffffff", "#000000"), domain=c(-1.5, 2.41), na.color="transparent", bins=15)
 colors_MeteoSat_precip <- colorBin(c("#0000ff", "#ff0000"), domain=c(-2, 1), na.color="transparent", bins=20)

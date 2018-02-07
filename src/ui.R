@@ -9,7 +9,7 @@ pacman::p_load(shiny,
 
 
 ui <- dashboardPage(title="Weather Dashboard",
-                    
+
                     dashboardHeader(title= "Weather Dashboard 2.0"),
                     dashboardSidebar(
                         includeCSS("styles.css"),
@@ -43,6 +43,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 labelWidth='60px',
                                                 handleWidth='30px')
                                 ),
+                                div(
+                                    style='height: 25px;',
+                                    switchInput('windy_switch',
+                                                label='Windy',
+                                                size='small',
+                                                value=TRUE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
+                                 ),
                                 div(
                                     style='height: 25px;',
                                     switchInput('wind_rt',
@@ -172,7 +181,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                             labelWidth='75px',
                                             handleWidth='30px'
                                 ),
-                                
+
                                 pickerInput('modelrun_base',
                                             'Base run',
                                             choices=list('Loading'='loading')
@@ -191,7 +200,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                         )
                     ),
                     dashboardBody({
-                        
+
                         tabsetPanel(
                             id = "conditionedPanels",
                             tabPanel('One',

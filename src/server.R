@@ -17,6 +17,7 @@ source("declarations.R")
 
 rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL,
+                     windy_station_history=NULL,
                      click=NULL,
                      click_wind_rt=NULL,
                      click_value=NULL,
@@ -199,6 +200,20 @@ server <- function(input, output, session) {
         df_metoffice$dif <- df_metoffice$metoffice %>% as.numeric - df_metoffice$model
 
         return(df_metoffice)
+    })
+    df_windy <- reactive({
+        df <- df()
+        print (head(df))
+        observable_windy <- conversion_list_Windy[[input$observable]]
+        print (observable_windy)
+        observable_fc <- model_observable()
+        df_windy <- df[!df[[observable_windy]] %>% is.na,
+                           c(observable_windy, observable_fc, 'windyrt_lat', 'windyrt_lon', 'windyrt_name')]
+        df_windy <- df_windy[!duplicated(df_windy), ]
+        names(df_windy)[c(1, 2)] <- c('windy', 'model')
+        df_windy$dif <- df_windy$windy %>% as.numeric - df_windy$model
+
+        return(df_windy)
     })
     df_Meteosat_cot_raster <- reactive({
         if (!input$Meteosat_clouds){return(data.frame())}
@@ -471,6 +486,33 @@ server <- function(input, output, session) {
                              group='MetOffice_markers',
                              layerId=df_metoffice$metoffice_name)
     })
+    observeEvent({df_windy(); input$windy_switch}, {
+        leafletProxy('map') %>%
+            clearGroup('Windy_markers')
+
+        if (!input$windy_switch) {
+            # No need to do anything else
+            return()
+        }
+        print("Plotting Windy markers")
+        df_windy <- df_windy()
+
+        leafletProxy('map') %>%
+            addCircleMarkers(lat=df_windy$windyrt_lat,
+                             lng=df_windy$windyrt_lon,
+                             radius=8,
+                             weight=1,
+                             popup=paste0("Windy", "<br>",
+                                          "stationname: ", df_windy$windyrt_name, "<br>",
+                                          "Windy:: ", df_windy$windy %>% round(2),"<br>",
+                                          "Model: ", df_windy$model %>% round(2)),
+                             fillColor=suppressWarnings(cpalet_circlemarkers()(df_windy$dif)),
+                             color='white',
+                             fillOpacity=1,
+                             opacity=1,
+                             group='Windy_markers',
+                             layerId=df_windy$windyrt_name)
+    })
     observeEvent({input$wind_rt}, {
         leafletProxy('map') %>%
             clearGroup('wind_rt')
@@ -632,10 +674,9 @@ server <- function(input, output, session) {
                                                             textsize="50px"),
                                 group='isobars')
     })
-
     observeEvent({input$map_marker_click}, {
         click <- input$map_marker_click
-        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers')
+        groups_that_can_click <- c('KNMI_markers', 'MetOffice_markers', 'OWM_markers','Windy_markers')
         if(click$group %in% groups_that_can_click) {
             # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
             rv$click <<- click

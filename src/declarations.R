@@ -173,8 +173,8 @@ stmt_iconeu_history <- "SELECT iconeu.datetime as datetime,
     FROM windy_iconeu_data_source
     WHERE datetime >='%s'
     AND datetime <'%s'
-    AND lat = %.2f
-    AND lon = %.2f
+    AND lat = %.5f
+    AND lon = %.5f
     GROUP BY datetime, lat, lon
     ) iconeu2 ON iconeu.lon = iconeu.lon
     AND iconeu.lat = iconeu2.lat
@@ -192,8 +192,8 @@ FROM windy_ecmwf_data_source ecmwf INNER JOIN
     FROM windy_ecmwf_data_source
     WHERE datetime >='%s'
     AND datetime <'%s'
-    AND lat = %.2f
-    AND lon = %.2f
+    AND lat = %.5f
+    AND lon = %.5f
     GROUP BY datetime, lat, lon
 ) ecmwf2 ON ecmwf.lon = ecmwf.lon
     AND ecmwf.lat = ecmwf2.lat

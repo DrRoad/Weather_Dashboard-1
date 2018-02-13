@@ -36,6 +36,7 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
     print(table_name)
     print(stmt)
     a = run.query(stmt, 'MOAD')  #Mother of all Data
+	a$result[,'nan_vector'] <- NA
     return(a$result)
 }
 
@@ -322,7 +323,7 @@ create_observation_history_plot <- function(click, datetimes, df, observable) {
             theme(legend.position='bottom') +
             scale_colour_manual(name='',
                                 values= c(one='red',two='black',three='#999999',four='green',five='#009E73',six='#56B4E9'),
-                                labels = c('ECMWF','HIRLAM','obs.','ICONEU','GFS-APX','GFS'))
+                                labels = c('ICONEU','HIRLAM','obs.','ECMWF','GFS-APX','GFS'))
         } else {
     p <- p + ggtitle(name) + ylab(observable) +
              scale_x_datetime(expand=c(0,0)) +

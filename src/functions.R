@@ -22,9 +22,9 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
     }
     if (model == 'GFS') {
         stmt <- sprintf("select * from (select @start_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) start_value ,
-					(select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) end_value,
-					(select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
-					(select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.%s;",
+                    (select @end_partition_value:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 432) as p) end_value,
+                    (select @start_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) start_value1 ,
+                    (select @end_partition_value1:=(floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48) as p) end_value1, weatherforecast.%s;",
                         minimal_datetime,
                         maximal_datetime,
                         minimal_datetime,
@@ -36,7 +36,7 @@ import_data_sql_model <- function(model, max_hours_back=4, max_hours_forward=1) 
     print(table_name)
     print(stmt)
     a = run.query(stmt, 'MOAD')  #Mother of all Data
-	a$result[,'nan_vector'] <- NA
+    a$result[,'nan_vector'] <- NA
     return(a$result)
 }
 

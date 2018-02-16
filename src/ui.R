@@ -63,6 +63,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                 ),
                                 div(
                                     style='height: 25px;',
+                                    switchInput('solar_rt',
+                                                label='Solar RT',
+                                                size='small',
+                                                value=TRUE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
+                                ),
+                                div(
+                                    style='height: 25px;',
                                     switchInput('windparks_Eneco',
                                                 label='Wind Eneco',
                                                 size='small',
@@ -231,7 +240,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                                    width="90%")
                                                     )
                                                 ),
-                                                box(title='Wind RT',
+                                                box(title='Renewables RT',
                                                     solidHeader=FALSE,
                                                     collapsible=TRUE,
                                                     collapsed=FALSE,
@@ -239,7 +248,7 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                     width=12,
                                                     heigth=300,
                                                     fluidRow(
-                                                        plotOutput('wind_rt_plot',
+                                                        plotOutput('renewables_rt_plot',
                                                                    height="250",
                                                                    width="90%")
                                                     )

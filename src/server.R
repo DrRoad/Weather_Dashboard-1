@@ -19,7 +19,7 @@ rv <- reactiveValues(knmi_station_history = NULL,
                      metoffice_station_history=NULL,
                      windy_station_history=NULL,
                      click=NULL,
-                     click_wind_rt=NULL,
+                     click_renewables_rt=NULL,
                      click_value=NULL,
                      ID_last_processed_time=Sys.time())
 
@@ -27,7 +27,7 @@ server <- function(input, output, session) {
     # autoInvalidates ----
     autoInvalidate_data_fetch_sql <- reactiveTimer(5 * 60 * 1000, session)
     autoInvalidate_MeteoSat <- reactiveTimer(3 * 60 * 1000, session)
-    autoInvalidatwind_rt_graph <- reactiveTimer(1 * 60 * 1000, session)
+    autoInvalidatrenewables_rt_graph <- reactiveTimer(1 * 60 * 1000, session)
     # Dataframes build up ----
     df_raw_sql <- reactive({
         # To update every x minutes, there is this autoInvalidate
@@ -534,6 +534,26 @@ server <- function(input, output, session) {
                        layerId=wind_rt_location$aggregateId)
 
     })
+    observeEvent({input$solar_rt}, {
+        leafletProxy('map') %>%
+            clearGroup('solar_rt')
+        if (!input$solar_rt) {
+            # Done here!
+            return()
+        }
+
+        icons_size <- icons(
+            iconUrl=solarparkiconurl_solar_rt,
+            iconHeight = 15,
+            iconWidth = 15
+        )
+        leafletProxy('map') %>%
+            addMarkers(lat = solar_rt_location$lat,
+                       lng = solar_rt_location$lon,
+                       icon = icons_size,
+                       group="solar_rt",
+                       layerId=solar_rt_location$park_id)
+    })
     observeEvent({input$windparks_Eneco}, {
         leafletProxy('map') %>%
             clearGroup('eneco_windparks')
@@ -681,8 +701,8 @@ server <- function(input, output, session) {
             # Only groups_that_can_click should change the status of rv$click to make sure that the graph lasts
             rv$click <<- click
         }
-        if (click$group == "wind_rt") {
-            rv$click_wind_rt <<- click
+        if (click$group == "wind_rt" | click$group == "solar_rt") {
+            rv$click_renewables_rt <<- click
         }
     })
     observeEvent({input$map_click}, {
@@ -730,35 +750,55 @@ server <- function(input, output, session) {
             })
         return(p)
     })
-    output$wind_rt_plot <- renderPlot({
-        click <- rv$click_wind_rt
-        autoInvalidatwind_rt_graph()
+    output$renewables_rt_plot <- renderPlot({
+        click <- rv$click_renewables_rt
+        autoInvalidatrenewables_rt_graph()
         if(is.null(click)) {
             # No plot necessary
             return()
         }
         datetime_begin <- (Sys.time() - 3 * 60 * 60) %>% with_tz('UTC') %>% strftime('%Y-%m-%d %H:%M:%S')
-        stmt <- sprintf("SELECT * from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
-                        click$id,
-                        datetime_begin)
-        df <- run.query(stmt, 'Breeze RT power')$result
+        if(click$group == "wind_rt") {
+            stmt <- sprintf("SELECT datetime, datasignalValue as value, sitename from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
+                            click$id,
+                            datetime_begin)
+            df <- run.query(stmt, 'Breeze RT power')$result
+        }
+        else if(click$group == "solar_rt") {
+            stmt <- sprintf("SELECT se.datetime, se.park_id, sd.park_name AS sitename, se.yield_inverter AS value FROM synaptiq.solar_energy_data_source se INNER JOIN mapping.solar_parks_details sd ON se.park_id=sd.park_id WHERE se.park_id = %s AND se.datetime >= '%s'",
+                            click$id,
+                            datetime_begin)
+            df <- run.query(stmt, 'Synaptiq RT power')$result
+        }
         df$datetime <- df$datetime %>%
             as.POSIXct() %>%
             with_tz('Europe/Amsterdam')
-        df$datasignalValue <- df$datasignalValue / 1000
+        if(click$group == "wind_rt") {
+            df$value <- df$value / 1000
+            yaxis_label <- 'Wind Power (MW)'
+        }
+        else if(click$group == "solar_rt") {
+            df$value <- df$value * 6
+            yaxis_label <- 'Solar Power (kW)'
+        }
         p <- ggplot() +
             geom_line(data=df, aes(x=datetime,
-                                   y=datasignalValue),
+                                   y=value),
                       color='red')
-        p <- p + geom_hline(yintercept=wind_rt_location[wind_rt_location$aggregateId == click$id, 'nominal_power'] / 1000)
-        p <- p +
+        if(click$group == "wind_rt") {
+            p <- p + geom_hline(yintercept=wind_rt_location[wind_rt_location$aggregateId == click$id, 'nominal_power'] / 1000)
+        }
+        else if(click$group == "solar_rt") {
+            p <- p + geom_hline(yintercept=solar_rt_location[solar_rt_location$park_id == click$id, 'nominal_power'])
+        }
+            p <- p +
             scale_x_datetime(expand=c(0, 0),
                              breaks=date_breaks('1 hours'),
                              labels=date_format("%H:%M", tz='Europe/Amsterdam')) +
-            ylab('Power (MW)') +
+            ylab(yaxis_label) +
             xlab('Time') +
             ggtitle(df$sitename[1])
-        if (df$datasignalValue %>% min > 0) {
+        if (df$value %>% min > 0) {
             p <- p + scale_y_continuous(expand=c(0,0), limits=c(0, ggplot_build(p)$layout$panel_ranges[[1]]$y.range[[2]]))
         }
         return(p)

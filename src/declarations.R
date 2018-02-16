@@ -77,6 +77,7 @@ external_windparks <- external_windparks_filename %>% read.csv %>% data.frame
 windparkiconurl <- "../data/Windparks/wfarm.png"
 windparkiconurl_grey <- "../data/Windparks/wfarm_grey.png"
 windparkiconurl_wind_rt <- "../data/Windparks/wfarm_orange.png"
+solarparkiconurl_solar_rt <- "../data/Solarparks/sfarm_orange.png"
 
 # Wind direction icons
 directions <- seq(0, 360, 22.5) %>% round(0)
@@ -93,6 +94,13 @@ INNER JOIN (SELECT * FROM mapping.pl_breeze_mapping) mapping
     ON breeze.aggregateid = mapping.breezeId
 LEFT JOIN (SELECT * FROM mapping.nominal_power) nominal_power
     ON mapping.pl = nominal_power.pl",'Wind RT locations')$result
+
+solar_rt_location <- run.query("SELECT
+    longitude as lon,
+    latitude as lat,
+    park_id,
+    size as nominal_power
+FROM mapping.solar_parks_details",'Solar RT locations')$result
 
 # Query statements ----
 basetime <- as.POSIXct('2017-11-29 00:00:00')

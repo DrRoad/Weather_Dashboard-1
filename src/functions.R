@@ -74,11 +74,11 @@ get_table_name_view <- function(minimal_datetime, maximal_datetime, model) {
     return(table_name)
 }
 
-import_data_sql_meteosat <- function(max_hours_back=1, max_hours_forward=1) {
-    minimal_datetime <- (Sys.time() %>%
+import_data_sql_meteosat <- function(compared_time,max_hours_back=1, max_hours_forward=1) {
+    minimal_datetime <- (compared_time %>%
                              trunc('hour') - max_hours_back * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
-    maximal_datetime <- (Sys.time() %>%
+    maximal_datetime <- (compared_time %>%
                              trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
 

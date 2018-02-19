@@ -50,6 +50,7 @@ server <- function(input, output, session) {
         # To update every x minutes, there is this autoInvalidate
         autoInvalidate_data_fetch_sql()
         input$refresh_data
+        compared_time <- compared_time()
         if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
 
         df_meteosat_sql_raw <- withProgress(
@@ -60,7 +61,7 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql_meteosat()
+                import_data_sql_meteosat(compared_time)
             })
         df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
         return(df_meteosat_sql_raw)
@@ -119,7 +120,7 @@ server <- function(input, output, session) {
         # Get this into the autorefresh, so that the time will be updated when you are leaving it in live modus
         autoInvalidate_data_fetch_sql()
         # Determine the interesting time we want to show. Is used to filter df_raw into df
-        # Depending on the switch, get the current time or the tietime the trader wants
+        # Depending on the switch, get the current time or the time the trader wants
         if(input$current_time) {
             # Get the current time, truncate it to hours so that we have the current hour
             compared_time <- Sys.time() %>%
@@ -278,7 +279,7 @@ server <- function(input, output, session) {
         list("Windspeed"=c(0, 25),
              "Temperature"=c(-10, 35),
              "Air pressure"=c(950, 1050),
-             "Radiation"=c(0, 150))[[input$observable]]
+             "Radiation"=c(0, 500))[[input$observable]]
     })
     cpalet_model_background <- reactive({
         options <- list("Windspeed"=colorNumeric(colorRampPalette(c("white", "white", "#66ffff", "#00ff99", "#00ff00", "#ffff00", "#ff9900", "#ff3300", "#ff0066", "#ff00ff"))(200),

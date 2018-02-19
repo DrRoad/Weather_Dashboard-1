@@ -61,7 +61,12 @@ server <- function(input, output, session) {
             style='old',
             {
                 # The actual data fetching
-                import_data_sql_meteosat(compared_time)
+                if(input$current_time) {
+                    import_data_sql_meteosat(Sys.time(), 1, 1)
+                }
+                else {
+                    import_data_sql_meteosat(compared_time, 0.2, 0.2)
+                }
             })
         df_meteosat_sql_raw <- df_meteosat_sql_raw[df_meteosat_sql_raw$datetime == df_meteosat_sql_raw$datetime %>% max, ]
         return(df_meteosat_sql_raw)

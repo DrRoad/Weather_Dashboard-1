@@ -784,7 +784,7 @@ server <- function(input, output, session) {
             yaxis_label <- 'Wind Power (MW)'
         }
         else if(click$group == "solar_rt") {
-            df$value <- df$value * 6
+            df$value <- df$value
             yaxis_label <- 'Solar Power (kW)'
         }
         p <- ggplot() +

@@ -81,17 +81,9 @@ import_data_sql_meteosat <- function(time,max_hours_back, max_hours_forward) {
     maximal_datetime <- (time %>%
                              trunc('hour') + max_hours_forward * 60 * 60) %>%
         strftime("%Y-%m-%d %H:%M:%S")
-    if(max_hours_back == 0.2) {
-        stmt <- sprintf("SELECT * from weatherforecast.meteosat_data_source where partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48 and partition_col<=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48 AND datetime='%s'",
-                        minimal_datetime,
-                        maximal_datetime,
-                        time)
-    }
-    else {
-        stmt <- sprintf("SELECT * from weatherforecast.meteosat_data_source where partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48 and partition_col<=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48",
+    stmt <- sprintf("SELECT * from weatherforecast.meteosat_data_source where partition_col>=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48 and partition_col<=floor((UNIX_TIMESTAMP('%s') - UNIX_TIMESTAMP('2017-11-29 00:00:00'))/3600) mod 48",
                         minimal_datetime,
                         maximal_datetime)
-    }
     a <- run.query(stmt, 'MeteoSat')
     return(a$result)
 }

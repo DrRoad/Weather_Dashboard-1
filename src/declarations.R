@@ -233,6 +233,7 @@ FROM windy_rt_source mo1 INNER JOIN
 
 colors_MeteoSat_cot <- colorBin(c("#ffffff", "#000000"), domain=c(-1.5, 2.41), na.color="transparent", bins=15)
 colors_MeteoSat_precip <- colorBin(c("#0000ff", "#ff0000"), domain=c(-2, 1), na.color="transparent", bins=20)
+colors_MeteoSat_radiation <- colorBin(c("#3119b7", "#ffffff00", "yellow1"), domain=c(0, 1000), na.color="transparent", bins=20)
 colors_MeteoSat <- colorBin(c("#0000ff00", "#ff0000ff"), domain=c(-200, 200), na.color="transparent", bins=20)
 
 domain_MeteoSat_map <-list("sds"=c(0, 1000),

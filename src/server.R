@@ -51,7 +51,7 @@ server <- function(input, output, session) {
         autoInvalidate_data_fetch_sql()
         input$refresh_data
         compared_time <- compared_time()
-        if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds)){return(data.frame())}
+        if (!isolate(input$Meteosat_rain) & !isolate(input$Meteosat_clouds) & !isolate(input$Meteosat_radiation) & !isolate(input$meteosat_compare_bool)){return(data.frame())}
 
         df_meteosat_sql_raw <- withProgress(
             # This part takes care of showing the notifcation when data is fetched
@@ -171,6 +171,26 @@ server <- function(input, output, session) {
         df_modelrun_compare$diff <- df_modelrun_compare[[column_base]] - df_modelrun_compare[[column_comp]]
         raster_maker(df_modelrun_compare, 'diff')
     })
+    df_modelrun_compare_meteosat_raster <- reactive({
+        df <- df()
+        df['lat'] =  round(df['lat'], 1)
+        df['lon'] =  round(df['lon'], 1)
+        if(nrow(df)==0) {print("Nothing in raw df"); return(data.frame())}
+        if (input$model == 'GFS') {
+            observable_fc <-(conversion_list_GFS[['Radiation']])}
+        if (input$model == 'HIRLAM') {
+            observable_fc <-(conversion_list_HIRLAM[['Radiation']])}
+
+        df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_meteosat_sql_raw['lat'] =  round(df_meteosat_sql_raw['lat'], 1)
+        df_meteosat_sql_raw['lon'] =  round(df_meteosat_sql_raw['lon'], 1)
+
+        df_meteosat_sql_raw <- df_meteosat_sql_raw[!duplicated(df_meteosat_sql_raw[,c('lat','lon')]),]
+        df_meteosat_sql_agg <-  setNames(aggregate(df_meteosat_sql_raw$sds, by=list(df_meteosat_sql_raw$lat,df_meteosat_sql_raw$lon), FUN=mean), c('lat','lon','sds'))
+        df_merge <- merge(x = df_meteosat_sql_agg[ , c('lat','lon','sds')], y = df[ , c('lat','lon',observable_fc)] , by=c('lat','lon'))
+        df_merge$diff <- df_merge[['sds']] - df_merge[[observable_fc]]
+        raster_maker(df_merge, 'diff')
+    })
     df_knmi <- reactive({
         df <- df()
         observable_knmi <- conversion_list_KNMI[[input$observable]]
@@ -214,7 +234,7 @@ server <- function(input, output, session) {
         print (observable_windy)
         observable_fc <- model_observable()
         df_windy <- df[!df[[observable_windy]] %>% is.na,
-                           c(observable_windy, observable_fc, 'windyrt_lat', 'windyrt_lon', 'windyrt_name')]
+                       c(observable_windy, observable_fc, 'windyrt_lat', 'windyrt_lon', 'windyrt_name')]
         df_windy <- df_windy[!duplicated(df_windy), ]
         names(df_windy)[c(1, 2)] <- c('windy', 'model')
         df_windy$dif <- df_windy$windy %>% as.numeric - df_windy$model
@@ -232,6 +252,12 @@ server <- function(input, output, session) {
         df_meteosat_sql_raw <- df_meteosat_sql_raw()
         df_Meteosat_precip_raster <- raster_maker(df_meteosat_sql_raw, 'precip')
         return(df_Meteosat_precip_raster)
+    })
+    df_Meteosat_radiation_raster <- reactive({
+        if (!input$Meteosat_radiation){return(data.frame())}
+        df_meteosat_sql_raw <- df_meteosat_sql_raw()
+        df_Meteosat_radiation_raster <- raster_maker(df_meteosat_sql_raw, 'sds')
+        return(df_Meteosat_radiation_raster)
     })
     df_lines <- reactive({
         if(!input$isobars) {return()}
@@ -295,7 +321,9 @@ server <- function(input, output, session) {
                                                     domain = domain_model()),
                         "Radiation"=colorBin(c("#3119b7", "#ffffff00", "yellow1"),
                                              domain=domain_model(),
-                                             na.color="transparent",
+
+
+                                             na.color="yellow1",
                                              bins=11))
         options[[input$observable]]
 
@@ -376,6 +404,26 @@ server <- function(input, output, session) {
                       title=sprintf("%s diff", input$observable),
                       layerId='model_legend')
     })
+    observeEvent({input$meteosat_compare_bool}, {
+        if (!input$meteosat_compare_bool) {
+            # This plots the comparison, so the bool should be True!
+            return()
+        }
+        df_modelrun_compare_meteosat_raster <- df_modelrun_compare_meteosat_raster()
+        leafletProxy('map') %>%
+            clearGroup('model')
+        if (nrow(df_modelrun_compare_meteosat_raster) == 0) {return()}
+        leafletProxy('map') %>%
+            clearControls %>%
+            addRasterImage(df_modelrun_compare_meteosat_raster,
+                           color=cpalet_circlemarkers(),
+                           opacity=0.5,
+                           group='model') %>%
+            addLegend(pal=cpalet_circlemarkers(),
+                      values=domain_diff() %>% rev,
+                      title=sprintf("%s diff", 'Radiation'),
+                      layerId='model_legend')
+    })
     observeEvent({df_Meteosat_cot_raster(); input$Meteosat_clouds}, {
         df_Meteosat_cot_raster <- df_Meteosat_cot_raster()
         leafletProxy('map') %>%
@@ -407,6 +455,22 @@ server <- function(input, output, session) {
                            color=colors_MeteoSat_precip,
                            opacity=0.45,
                            group='MeteoSat_precip')
+    })
+    observeEvent({df_Meteosat_radiation_raster(); input$Meteosat_radiation}, {
+        df_Meteosat_radiation_raster <- df_Meteosat_radiation_raster()
+        leafletProxy('map') %>%
+            clearGroup('MeteoSat_radiation')
+        if(df_Meteosat_radiation_raster %>% typeof == 'list') {
+            # Returned empty from function before
+            return()
+        }
+        leafletProxy('map') %>%
+            # clearGroup('contourlines') %>%
+            # clearGroup('HL') %>%
+            addRasterImage((df_Meteosat_radiation_raster),
+                           color=colors_MeteoSat_radiation,
+                           opacity=0.45,
+                           group='MeteoSat_radiation')
     })
     observeEvent({df_knmi(); input$knmi_switch}, {
         leafletProxy('map') %>%
@@ -797,7 +861,8 @@ server <- function(input, output, session) {
         else if(click$group == "solar_rt") {
             p <- p + geom_hline(yintercept=solar_rt_location[solar_rt_location$park_id == click$id, 'nominal_power'])
         }
-            p <- p +
+
+        p <- p +
             scale_x_datetime(expand=c(0, 0),
                              breaks=date_breaks('1 hours'),
                              labels=date_format("%H:%M", tz='Europe/Amsterdam')) +

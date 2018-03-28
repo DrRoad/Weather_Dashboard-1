@@ -51,7 +51,8 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 value=TRUE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
-                                 ),
+
+                                ),
                                 div(
                                     style='height: 25px;',
                                     switchInput('wind_rt',
@@ -123,6 +124,15 @@ ui <- dashboardPage(title="Weather Dashboard",
                                                 value=FALSE,
                                                 labelWidth='60px',
                                                 handleWidth='30px')
+                                ),
+                                div(
+                                    style='height: 25px;',
+                                    switchInput('Meteosat_radiation',
+                                                label='Radiation',
+                                                size='small',
+                                                value=FALSE,
+                                                labelWidth='60px',
+                                                handleWidth='30px')
                                 )
                             ),
                             HTML("<br/>"),
@@ -178,7 +188,8 @@ ui <- dashboardPage(title="Weather Dashboard",
                             box(title='Model compare',
                                 solidHeader=FALSE,
                                 collapsible=TRUE,
-                                collapsed=FALSE,
+
+                                collapsed=TRUE,
                                 color='olive',
                                 background='navy',
                                 width='100%',
@@ -198,6 +209,22 @@ ui <- dashboardPage(title="Weather Dashboard",
                                 pickerInput('modelrun_comp',
                                             'Compared to',
                                             choices=list('Loading'='loading')
+                                )
+                            ),
+                            box(title='MeteoSat compare',
+                                solidHeader=FALSE,
+                                collapsible=TRUE,
+                                collapsed=TRUE,
+                                color='olive',
+                                background='navy',
+                                width='100%',
+                                heigth=300,
+                                switchInput('meteosat_compare_bool',
+                                            label='Compare rad',
+                                            size='small',
+                                            value=FALSE,
+                                            labelWidth='75px',
+                                            handleWidth='30px'
                                 )
                             )
                         ),

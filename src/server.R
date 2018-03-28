@@ -117,7 +117,6 @@ server <- function(input, output, session) {
                                      datetime + lat + lon ~ model_date + model_run,
                                      value.var=value.var) %>%
             data.frame
-
         return(df_modelrun_compare)
     })
 
@@ -185,7 +184,6 @@ server <- function(input, output, session) {
         df_meteosat_sql_raw['lat'] =  round(df_meteosat_sql_raw['lat'], 1)
         df_meteosat_sql_raw['lon'] =  round(df_meteosat_sql_raw['lon'], 1)
 
-        df_meteosat_sql_raw <- df_meteosat_sql_raw[!duplicated(df_meteosat_sql_raw[,c('lat','lon')]),]
         df_meteosat_sql_agg <-  setNames(aggregate(df_meteosat_sql_raw$sds, by=list(df_meteosat_sql_raw$lat,df_meteosat_sql_raw$lon), FUN=mean), c('lat','lon','sds'))
         df_merge <- merge(x = df_meteosat_sql_agg[ , c('lat','lon','sds')], y = df[ , c('lat','lon',observable_fc)] , by=c('lat','lon'))
         df_merge$diff <- df_merge[['sds']] - df_merge[[observable_fc]]
@@ -321,7 +319,6 @@ server <- function(input, output, session) {
                                                     domain = domain_model()),
                         "Radiation"=colorBin(c("#3119b7", "#ffffff00", "yellow1"),
                                              domain=domain_model(),
-
 
                                              na.color="yellow1",
                                              bins=11))
@@ -861,7 +858,6 @@ server <- function(input, output, session) {
         else if(click$group == "solar_rt") {
             p <- p + geom_hline(yintercept=solar_rt_location[solar_rt_location$park_id == click$id, 'nominal_power'])
         }
-
         p <- p +
             scale_x_datetime(expand=c(0, 0),
                              breaks=date_breaks('1 hours'),

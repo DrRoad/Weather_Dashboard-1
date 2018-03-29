@@ -339,7 +339,7 @@ server <- function(input, output, session) {
                                                    domain = domain_diff()),
                         "Air pressure"=colorNumeric(palette = colorRampPalette(c("red", "#ff9900", "white", "#d8ff00", "limegreen"))(200) ,
                                                     domain = domain_diff()),
-                        "Radiation"=colorNumeric(palette = colorRampPalette(c("red", "#ff9900", "white", "#d8ff00" ,"limegreen"))(200) ,
+                        "Radiation"=colorNumeric(palette = colorRampPalette(c("blue", "white","yellow1"))(200) ,
                                                  domain = domain_diff()))
         options[[input$observable]]
 
@@ -594,11 +594,11 @@ server <- function(input, output, session) {
             iconWidth = 20
         )
         leafletProxy('map') %>%
-            addMarkers(lat = wind_rt_location$lat,
-                       lng = wind_rt_location$lon,
+            addMarkers(lat = append(wind_rt_location$lat, 51.53987),
+                       lng = append(wind_rt_location$lon, 2.92185),
                        icon = icons_size,
                        group="wind_rt",
-                       layerId=wind_rt_location$aggregateId)
+                       layerId=append(wind_rt_location$aggregateId, 999))
 
     })
     observeEvent({input$solar_rt}, {
@@ -826,10 +826,17 @@ server <- function(input, output, session) {
         }
         datetime_begin <- (Sys.time() - 3 * 60 * 60) %>% with_tz('UTC') %>% strftime('%Y-%m-%d %H:%M:%S')
         if(click$group == "wind_rt") {
-            stmt <- sprintf("SELECT datetime, datasignalValue as value, sitename from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
-                            click$id,
-                            datetime_begin)
-            df <- run.query(stmt, 'Breeze RT power')$result
+            if(click$id == 999) {
+                stmt <- sprintf("select datetime, sum(actual_active_power) as value from breeze.c_power where datetime >= '%s' group by datetime;",
+                                datetime_begin)
+                df <- run.query(stmt, 'C-Power RT power')$result
+            }
+            else {
+                stmt <- sprintf("SELECT datetime, datasignalValue as value, sitename from breeze.breeze_power_data_source WHERE aggregateId = %s AND datetime >= '%s'",
+                                click$id,
+                                datetime_begin)
+                df <- run.query(stmt, 'Breeze RT power')$result
+            }
         }
         else if(click$group == "solar_rt") {
             stmt <- sprintf("SELECT se.datetime, se.park_id, sd.park_name AS sitename, se.yield_inverter AS value FROM synaptiq.solar_energy_data_source se INNER JOIN mapping.solar_parks_details sd ON se.park_id=sd.park_id WHERE se.park_id = %s AND se.datetime >= '%s'",
@@ -854,6 +861,9 @@ server <- function(input, output, session) {
                       color='red')
         if(click$group == "wind_rt") {
             p <- p + geom_hline(yintercept=wind_rt_location[wind_rt_location$aggregateId == click$id, 'nominal_power'] / 1000)
+            if(click$id == 999) {
+                p <- p + geom_hline(yintercept=174)
+            }
         }
         else if(click$group == "solar_rt") {
             p <- p + geom_hline(yintercept=solar_rt_location[solar_rt_location$park_id == click$id, 'nominal_power'])
